@@ -27,6 +27,7 @@ COPY --from=builder /app/dist ./dist
 # Copy runtime assets
 COPY migrations/ ./migrations/
 COPY prompts/ ./prompts/
+COPY taxonomy_config.yaml ./
 COPY data/ ./data/
 
 # Create data directory for SQLite

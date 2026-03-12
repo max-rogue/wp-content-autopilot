@@ -138,10 +138,11 @@ CRON_TIMEZONE=UTC
 For production/VPS deployment:
 
 ```bash
+# From repo root
 docker compose up -d
 ```
 
-See `docker/` directory for Dockerfile and compose config.
+The root `Dockerfile` and `docker-compose.yml` are the canonical Docker configs.
 
 ## Adapting for Your Niche
 

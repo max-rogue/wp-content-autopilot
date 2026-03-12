@@ -8,6 +8,7 @@ COPY tsconfig.json ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY prompts/ ./prompts/
+COPY taxonomy_config.yaml ./
 RUN npx tsc -p tsconfig.json
 
 # ── Runtime stage ────────────────────────────────────────────────
@@ -24,6 +25,8 @@ RUN npm ci --omit=dev --ignore-scripts && \
 COPY --from=builder /app/dist ./dist
 COPY migrations/ ./migrations/
 COPY prompts/ ./prompts/
+COPY taxonomy_config.yaml ./
+COPY data/ ./data/
 
 # Data directory for SQLite + keyword CSV
 RUN mkdir -p /app/data
