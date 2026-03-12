@@ -1,0 +1,72 @@
+{
+    "_description": "Cluster → Canonical Category mapping. Source: 01_ContentSpec §2.1 + 04_Keyword.csv cluster column.",
+    "_fallback": "hoc-golf",
+    "_fallback_note": "If a cluster value is not found in this mapping, it falls back to hoc-golf (most general golf education category). A warning 'cluster_unmapped' is emitted.",
+    "mapping": {
+        "gậy golf": "gay-golf",
+        "brand gậy golf": "gay-golf",
+        "brand authority": "gay-golf",
+        "bóng golf": "gay-golf",
+        "phụ kiện golf": "gay-golf",
+        "shaft & specs": "gay-golf",
+        "shaft brand": "gay-golf",
+        "golf fitting": "golf-fitting",
+        "học golf": "hoc-golf",
+        "handicap": "hoc-golf",
+        "kỹ thuật nâng cao": "hoc-golf",
+        "sân golf": "san-golf",
+        "sân tập golf": "san-golf",
+        "shop golf": "shop-golf",
+        "thời trang golf": "shop-golf",
+        "luật golf": "luat-golf",
+        "golf công nghệ": "golf-cong-nghe",
+        "chi phí golf": "chi-phi-va-van-hoa",
+        "văn hóa golf": "chi-phi-va-van-hoa",
+        "fitness golf": "suc-khoe-fitness",
+        "sức khỏe golf": "suc-khoe-fitness",
+        "du lịch golf": "du-lich-su-kien",
+        "sự kiện golf": "du-lich-su-kien"
+    },
+    "canonical_categories": [
+        {
+            "slug": "gay-golf",
+            "name": "Gậy Golf"
+        },
+        {
+            "slug": "golf-fitting",
+            "name": "Golf Fitting"
+        },
+        {
+            "slug": "hoc-golf",
+            "name": "Học Golf"
+        },
+        {
+            "slug": "san-golf",
+            "name": "Sân Golf"
+        },
+        {
+            "slug": "shop-golf",
+            "name": "Shop Golf"
+        },
+        {
+            "slug": "luat-golf",
+            "name": "Luật Golf"
+        },
+        {
+            "slug": "golf-cong-nghe",
+            "name": "Golf Công Nghệ"
+        },
+        {
+            "slug": "chi-phi-va-van-hoa",
+            "name": "Chi Phí Và Văn Hóa"
+        },
+        {
+            "slug": "suc-khoe-fitness",
+            "name": "Sức Khỏe & Fitness"
+        },
+        {
+            "slug": "du-lich-su-kien",
+            "name": "Du Lịch & Sự Kiện"
+        }
+    ]
+}

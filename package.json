@@ -1,0 +1,65 @@
+{
+    "name": "wp-content-autopilot",
+    "version": "1.0.0",
+    "description": "AI-powered WordPress content automation pipeline — keyword to published SEO article, fully automated",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "bin": {
+        "wcap": "dist/bin/wcap.js",
+        "wp-content-autopilot": "dist/bin/wcap.js"
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json && node -e \"require('fs').cpSync('src/config/taxonomy_config.yaml','dist/config/taxonomy_config.yaml')\"",
+        "dev": "npx ts-node src/server.ts",
+        "start": "node dist/server.js",
+        "cli": "ts-node src/cli.ts",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit -p tsconfig.json",
+        "migrate": "ts-node src/db/migrate.ts",
+        "tool:sync-taxonomies": "ts-node src/cli.ts sync-taxonomies",
+        "rebuild:better-sqlite3": "node -e \"const {spawnSync}=require('child_process'); const r=spawnSync('npm',['rebuild','better-sqlite3','--quiet'],{stdio:'ignore',shell:true}); process.exit(0)\"",
+        "postinstall": "npm run rebuild:better-sqlite3"
+    },
+    "keywords": [
+        "wordpress",
+        "seo",
+        "content-automation",
+        "ai",
+        "gemini",
+        "openai",
+        "rank-math",
+        "autopilot",
+        "blog",
+        "pipeline"
+    ],
+    "author": "",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nguyenlong2817/wp-content-autopilot"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    },
+    "dependencies": {
+        "@google/genai": "^1.42.0",
+        "better-sqlite3": "^11.7.0",
+        "cron-parser": "^5.5.0",
+        "dotenv": "^17.3.1",
+        "express": "^4.21.0",
+        "helmet": "^8.0.0",
+        "uuid": "^10.0.0",
+        "winston": "^3.17.0"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.12",
+        "@types/express": "^5.0.0",
+        "@types/helmet": "^0.0.48",
+        "@types/node": "^22.10.0",
+        "@types/uuid": "^10.0.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.7.0",
+        "vitest": "^2.1.9"
+    }
+}

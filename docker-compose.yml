@@ -1,0 +1,20 @@
+services:
+  autopilot:
+    build: .
+    container_name: wp-content-autopilot
+    restart: unless-stopped
+    ports:
+      - "${SERVICE_PORT:-3100}:3100"
+    env_file:
+      - .env
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+      # Allow prompt customization without rebuild
+      - ./prompts:/app/prompts:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

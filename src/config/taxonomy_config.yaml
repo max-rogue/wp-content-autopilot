@@ -1,0 +1,27 @@
+# taxonomy_config.yaml — Tag whitelist and archive policy
+# Edit to match your site's taxonomy structure
+# Pipeline uses this to validate/sync WordPress categories and tags
+
+version: "2.1"
+
+tag_whitelist:
+  brand:
+    - example-brand-1
+    - example-brand-2
+  category:
+    - guides
+    - reviews
+    - comparisons
+    - glossary
+  topic:
+    - beginner
+    - advanced
+    - tips
+
+tag_archive_policy:
+  default: noindex_follow
+  graduated: []
+
+approved_additions: []
+
+max_tags_per_post: 8
