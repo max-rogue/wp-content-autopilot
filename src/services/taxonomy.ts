@@ -1,17 +1,18 @@
 /**
  * Taxonomy constants and helpers.
- * SOURCE OF TRUTH: docs/spec/marketing/01_ContentSpec.md §2
  *
- * Canonical categories (§2.1): exactly 10 slugs.
- * Tag whitelist (§2.2): brand, shaft-brand, ball-brand, skill/problem, handicap-band.
- * City/province tags: only if verified local value exists (§2.2, §0.3).
- * Taxonomy gate (§2.3): new tag ≥3 planned articles within 60 days.
+ * All niche-specific data (categories, tags, cluster→category mapping)
+ * is loaded from taxonomy_config.yaml via taxonomy-config-loader.ts.
+ * This file contains only generic logic — no hardcoded niche references.
  *
  * No secrets in logs. No video logic. No hardcoded Rank Math keys.
  */
 
+import { loadTaxonomyConfig } from '../config/taxonomy-config-loader';
+import type { TaxonomyConfig, CategoryEntry } from '../config/taxonomy-config-loader';
+
 // ═══════════════════════════════════════════════════════════════════
-// §2.1 — Canonical Categories
+// §2.1 — Canonical Categories (loaded from config)
 // ═══════════════════════════════════════════════════════════════════
 
 export interface CanonicalCategory {
@@ -20,149 +21,175 @@ export interface CanonicalCategory {
 }
 
 /**
- * The 10 canonical category slugs, exactly as defined in 01_ContentSpec §2.1.
- * Names are Title Case Vietnamese for WP display.
+ * Get canonical categories from loaded config.
+ * Returns a frozen copy for backward compatibility with code that
+ * used the old CANONICAL_CATEGORIES constant.
  */
-export const CANONICAL_CATEGORIES: readonly CanonicalCategory[] = [
-    { slug: 'gay-golf', name: 'Gậy Golf' },
-    { slug: 'golf-fitting', name: 'Golf Fitting' },
-    { slug: 'hoc-golf', name: 'Học Golf' },
-    { slug: 'san-golf', name: 'Sân Golf' },
-    { slug: 'shop-golf', name: 'Shop Golf' },
-    { slug: 'luat-golf', name: 'Luật Golf' },
-    { slug: 'golf-cong-nghe', name: 'Golf Công Nghệ' },
-    { slug: 'chi-phi-va-van-hoa', name: 'Chi Phí Và Văn Hóa' },
-    { slug: 'suc-khoe-fitness', name: 'Sức Khỏe & Fitness' },
-    { slug: 'du-lich-su-kien', name: 'Du Lịch & Sự Kiện' },
-] as const;
+export function getCanonicalCategories(): readonly CanonicalCategory[] {
+    const config = loadTaxonomyConfig();
+    return config.categories;
+}
 
-export const CANONICAL_CATEGORY_SLUGS = new Set(
-    CANONICAL_CATEGORIES.map((c) => c.slug)
+/** Convenience: get canonical categories as a constant (lazy-loaded). */
+export const CANONICAL_CATEGORIES: readonly CanonicalCategory[] = new Proxy(
+    [] as CanonicalCategory[],
+    {
+        get(_target, prop) {
+            const cats = getCanonicalCategories();
+            if (prop === Symbol.iterator) {
+                return function* () { yield* cats; };
+            }
+            if (prop === 'length') return cats.length;
+            if (prop === 'map') return cats.map.bind(cats);
+            if (prop === 'find') return cats.find.bind(cats);
+            if (prop === 'filter') return cats.filter.bind(cats);
+            if (prop === 'forEach') return cats.forEach.bind(cats);
+            if (typeof prop === 'string' && /^\d+$/.test(prop)) {
+                return cats[parseInt(prop, 10)];
+            }
+            // Forward any other array accesses
+            const val = (cats as unknown as Record<string | symbol, unknown>)[prop];
+            return typeof val === 'function' ? (val as Function).bind(cats) : val;
+        },
+    }
+);
+
+export function getCanonicalCategorySlugs(): Set<string> {
+    const config = loadTaxonomyConfig();
+    return config.categorySlugs;
+}
+
+export const CANONICAL_CATEGORY_SLUGS = new Proxy(
+    new Set<string>(),
+    {
+        get(_target, prop) {
+            const slugs = getCanonicalCategorySlugs();
+            if (prop === 'has') return slugs.has.bind(slugs);
+            if (prop === 'size') return slugs.size;
+            if (prop === Symbol.iterator) return slugs[Symbol.iterator].bind(slugs);
+            const val = (slugs as unknown as Record<string | symbol, unknown>)[prop];
+            return typeof val === 'function' ? (val as Function).bind(slugs) : val;
+        },
+    }
 );
 
 // ═══════════════════════════════════════════════════════════════════
-// §2.2 — Tag Whitelist (Controlled Vocabulary)
+// §2.2 — Tag Whitelist (loaded from config)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Tag groups per §2.2.
- * City/province tags are intentionally EXCLUDED from static whitelist.
- * They require verified local value which we do NOT auto-create.
+ * Get tag whitelist groups from loaded config.
+ * Backward-compatible Record<string, readonly string[]> format.
  */
-export const TAG_WHITELIST_GROUPS: Record<string, readonly string[]> = {
-    brand: [
-        'titleist',
-        'taylormade',
-        'callaway',
-        'ping',
-        'honma',
-        'mizuno',
-        'srixon',
-        'cobra',
-        'cleveland',
-        'xxio',
-        'pxg',
-    ],
-    shaft_brand: [
-        'fujikura',
-        'graphite-design',
-        'project-x',
-        'kbs',
-        'nippon',
-        'mitsubishi',
-        'ust-mamiya',
-        'accra',
-    ],
-    ball_brand: ['pro-v1', 'tp5', 'chrome-soft', 'z-star', 'tour-b'],
-    skill_problem: [
-        'slice',
-        'hook',
-        'topping',
-        'chunk',
-        'putting',
-        'chipping',
-        'bunker',
-    ],
-    handicap_band: ['hcp-0-9', 'hcp-10-19', 'hcp-20-36'],
-};
+export function getTagWhitelistGroups(): Record<string, readonly string[]> {
+    const config = loadTaxonomyConfig();
+    const result: Record<string, string[]> = {};
+    for (const [group, tags] of config.tagWhitelist) {
+        result[group] = [...tags];
+    }
+    return result;
+}
+
+/** Backward-compatible constant via proxy. */
+export const TAG_WHITELIST_GROUPS: Record<string, readonly string[]> = new Proxy(
+    {} as Record<string, readonly string[]>,
+    {
+        get(_target, prop) {
+            const groups = getTagWhitelistGroups();
+            if (typeof prop === 'string') return groups[prop];
+            return undefined;
+        },
+        ownKeys() {
+            return Object.keys(getTagWhitelistGroups());
+        },
+        getOwnPropertyDescriptor(_target, prop) {
+            const groups = getTagWhitelistGroups();
+            if (typeof prop === 'string' && prop in groups) {
+                return { configurable: true, enumerable: true, value: groups[prop] };
+            }
+            return undefined;
+        },
+    }
+);
 
 /** Flat set of all whitelisted tag slugs. */
-export const TAG_WHITELIST = new Set<string>(
-    Object.values(TAG_WHITELIST_GROUPS).flat()
+export function getTagWhitelist(): Set<string> {
+    const config = loadTaxonomyConfig();
+    return config.flatWhitelist;
+}
+
+export const TAG_WHITELIST = new Proxy(
+    new Set<string>(),
+    {
+        get(_target, prop) {
+            const wl = getTagWhitelist();
+            if (prop === 'has') return wl.has.bind(wl);
+            if (prop === 'size') return wl.size;
+            if (prop === Symbol.iterator) return wl[Symbol.iterator].bind(wl);
+            const val = (wl as unknown as Record<string | symbol, unknown>)[prop];
+            return typeof val === 'function' ? (val as Function).bind(wl) : val;
+        },
+    }
 );
 
 // ═══════════════════════════════════════════════════════════════════
-// Cluster → Category Mapping (§2.1 mapping rule)
+// Cluster → Category Mapping (loaded from config)
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Maps keyword.csv cluster values → one of the 10 canonical category slugs.
- * Derived from inspecting actual cluster values in 04_Keyword.csv.
- *
- * DEFAULT FALLBACK: 'hoc-golf' (most general golf education category).
+ * Get cluster→category mapping from config.
  */
-export const CLUSTER_TO_CATEGORY: Record<string, string> = {
-    // gậy golf family
-    'gậy golf': 'gay-golf',
-    'brand gậy golf': 'gay-golf',
-    'brand authority': 'gay-golf',
-    'bóng golf': 'gay-golf',
-    'phụ kiện golf': 'gay-golf',
-    'shaft & specs': 'gay-golf',
-    'shaft brand': 'gay-golf',
+export function getClusterToCategory(): Record<string, string> {
+    const config = loadTaxonomyConfig();
+    return config.clusterToCategory;
+}
 
-    // fitting
-    'golf fitting': 'golf-fitting',
+/** Backward-compatible constant via proxy. */
+export const CLUSTER_TO_CATEGORY: Record<string, string> = new Proxy(
+    {} as Record<string, string>,
+    {
+        get(_target, prop) {
+            if (typeof prop === 'string') {
+                const map = getClusterToCategory();
+                return map[prop];
+            }
+            return undefined;
+        },
+        ownKeys() {
+            return Object.keys(getClusterToCategory());
+        },
+        getOwnPropertyDescriptor(_target, prop) {
+            const map = getClusterToCategory();
+            if (typeof prop === 'string' && prop in map) {
+                return { configurable: true, enumerable: true, value: map[prop] };
+            }
+            return undefined;
+        },
+    }
+);
 
-    // learning
-    'học golf': 'hoc-golf',
-    handicap: 'hoc-golf',
-    'kỹ thuật nâng cao': 'hoc-golf',
+/** Default fallback category from config. */
+export function getDefaultFallbackCategory(): string {
+    const config = loadTaxonomyConfig();
+    return config.defaultFallbackCategory;
+}
 
-    // courses
-    'sân golf': 'san-golf',
-    'sân tập golf': 'san-golf',
-
-    // shopping
-    'shop golf': 'shop-golf',
-    'thời trang golf': 'shop-golf',
-
-    // rules
-    'luật golf': 'luat-golf',
-
-    // technology
-    'golf công nghệ': 'golf-cong-nghe',
-
-    // cost & culture
-    'chi phí golf': 'chi-phi-va-van-hoa',
-    'văn hóa golf': 'chi-phi-va-van-hoa',
-
-    // health & fitness
-    'fitness golf': 'suc-khoe-fitness',
-    'sức khỏe golf': 'suc-khoe-fitness',
-
-    // travel & events
-    'du lịch golf': 'du-lich-su-kien',
-    'sự kiện golf': 'du-lich-su-kien',
-};
-
-/** Default fallback category for unmapped clusters. */
-export const DEFAULT_FALLBACK_CATEGORY = 'hoc-golf';
 
 /**
  * Resolve a keyword.csv cluster to a canonical category slug.
- * Returns { category, mapped }. If mapped is false, logs a warning.
+ * Returns { category, mapped }. If mapped is false, means unmapped cluster.
  */
 export function resolveClusterCategory(cluster: string): {
     category: string;
     mapped: boolean;
 } {
+    const config = loadTaxonomyConfig();
     const normalized = cluster.trim().toLowerCase();
-    const match = CLUSTER_TO_CATEGORY[normalized];
+    const match = config.clusterToCategory[normalized];
     if (match) {
         return { category: match, mapped: true };
     }
-    return { category: DEFAULT_FALLBACK_CATEGORY, mapped: false };
+    return { category: config.defaultFallbackCategory, mapped: false };
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -200,13 +227,7 @@ export interface KeywordCsvRow {
 }
 
 /**
- * Evaluate gated tags: tags NOT in whitelist that appear in ≥3 planned articles
- * within a 60-day window. Since keyword.csv rows do not have explicit dates,
- * we count all rows with matching tags in notes/keyword as "within the window".
- *
- * §2.3: "≥3 planned articles within 60 days" → we interpret all CSV rows as
- * the current planned pipeline, so all rows count toward the 60-day window.
- *
+ * Evaluate gated tags: tags NOT in whitelist that appear in ≥3 planned articles.
  * Returns a map of tag slug → count of appearances.
  */
 export function evaluateGatedTags(
@@ -215,9 +236,10 @@ export function evaluateGatedTags(
 ): Map<string, { count: number; qualifies: boolean }> {
     const result = new Map<string, { count: number; qualifies: boolean }>();
     const THRESHOLD = 3;
+    const whitelist = getTagWhitelist();
 
     for (const tag of candidateTags) {
-        if (TAG_WHITELIST.has(tag)) continue; // already whitelisted, skip
+        if (whitelist.has(tag)) continue; // already whitelisted, skip
 
         const slug = normalizeSlug(tag);
         let count = 0;
@@ -239,14 +261,14 @@ export function evaluateGatedTags(
  * Check if a tag is in the whitelist.
  */
 export function isWhitelistedTag(tagSlug: string): boolean {
-    return TAG_WHITELIST.has(normalizeSlug(tagSlug));
+    return getTagWhitelist().has(normalizeSlug(tagSlug));
 }
 
 /**
  * Validate that a category slug is canonical.
  */
 export function isCanonicalCategory(slug: string): boolean {
-    return CANONICAL_CATEGORY_SLUGS.has(normalizeSlug(slug));
+    return getCanonicalCategorySlugs().has(normalizeSlug(slug));
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -288,128 +310,57 @@ export function normalizeForLookup(s: string): string {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Reverse lookup: category display name (lowercased) → canonical slug.
- * Built once from CANONICAL_CATEGORIES.
- */
-const NAME_TO_SLUG = new Map<string, string>(
-    CANONICAL_CATEGORIES.map((c) => [c.name.toLowerCase(), c.slug])
-);
-
-/**
- * Explicit alias dictionary: normalizeForLookup(alias) → canonical slug.
- *
- * Only contains safe, well-known display-name variants that map to one
- * of the 10 canonical slugs. No dynamic expansion.
- */
-const CATEGORY_ALIASES: Record<string, string> = (() => {
-    const aliases: Record<string, string> = {};
-    const add = (raw: string, slug: string) => {
-        aliases[normalizeForLookup(raw)] = slug;
-    };
-
-    // golf-cong-nghe: word-order variant
-    add('Công Nghệ Golf', 'golf-cong-nghe');
-    add('Golf Công Nghệ', 'golf-cong-nghe');
-    add('cong nghe golf', 'golf-cong-nghe');
-
-    // du-lich-su-kien: ampersand vs "và"
-    add('Du Lịch Và Sự Kiện', 'du-lich-su-kien');
-    add('Sự Kiện Du Lịch', 'du-lich-su-kien');
-    add('du lich su kien', 'du-lich-su-kien');
-
-    // suc-khoe-fitness: ampersand vs "và"
-    add('Sức Khỏe Và Fitness', 'suc-khoe-fitness');
-    add('suc khoe fitness', 'suc-khoe-fitness');
-
-    // chi-phi-va-van-hoa: common truncations / reordering
-    add('Chi Phí Golf', 'chi-phi-va-van-hoa');
-    add('Văn Hóa Golf', 'chi-phi-va-van-hoa');
-    add('chi phi van hoa', 'chi-phi-va-van-hoa');
-
-    return aliases;
-})();
-
-/**
- * Sorted-token lookup: maps sorted normalizeForLookup tokens of each
- * canonical display name and cluster key to the canonical slug.
- * This catches arbitrary word-order permutations algorithmically.
- */
-const SORTED_TOKEN_TO_SLUG = new Map<string, string>();
-
-// Populate from canonical category names
-for (const cat of CANONICAL_CATEGORIES) {
-    const key = normalizeForLookup(cat.name).split(' ').sort().join(' ');
-    if (!SORTED_TOKEN_TO_SLUG.has(key)) {
-        SORTED_TOKEN_TO_SLUG.set(key, cat.slug);
-    }
-}
-// Populate from cluster keys
-for (const [cluster, slug] of Object.entries(CLUSTER_TO_CATEGORY)) {
-    const key = normalizeForLookup(cluster).split(' ').sort().join(' ');
-    if (!SORTED_TOKEN_TO_SLUG.has(key)) {
-        SORTED_TOKEN_TO_SLUG.set(key, slug);
-    }
-}
-// Populate from explicit aliases
-for (const [normalized, slug] of Object.entries(CATEGORY_ALIASES)) {
-    const key = normalized.split(' ').sort().join(' ');
-    if (!SORTED_TOKEN_TO_SLUG.has(key)) {
-        SORTED_TOKEN_TO_SLUG.set(key, slug);
-    }
-}
-
-/**
  * Resolve any category input to a canonical slug.
  *
  * Resolution chain (first match wins):
- *   1. Canonical slug pass-through ("golf-cong-nghe")
- *   2. Display name exact match ("Golf Công Nghệ")
- *   3. Cluster name exact match ("golf công nghệ")
- *   4. Explicit alias dictionary (diacritic-stripped, normalized)
- *   5. Sorted-token algorithmic match (catches word-order permutations)
+ *   1. Canonical slug pass-through
+ *   2. Display name exact match
+ *   3. Cluster name exact match (from config cluster_to_category)
+ *   4. Sorted-token algorithmic match (catches word-order permutations)
  *
  * Returns the canonical slug, or null if input is not resolvable.
- * This is the SINGLE entry-point Stage 6 should use.
  */
 export function resolveCategorySlug(input: string): string | null {
     if (!input || !input.trim()) return null;
 
+    const config = loadTaxonomyConfig();
     const trimmed = input.trim();
 
     // 1. Already a canonical slug?
     const asSlug = normalizeSlug(trimmed);
-    if (CANONICAL_CATEGORY_SLUGS.has(asSlug)) {
+    if (config.categorySlugs.has(asSlug)) {
         return asSlug;
     }
 
     // 2. Display name match (case-insensitive)
     const lower = trimmed.toLowerCase();
-    const fromName = NAME_TO_SLUG.get(lower);
-    if (fromName) {
-        return fromName;
+    for (const cat of config.categories) {
+        if (cat.name.toLowerCase() === lower) {
+            return cat.slug;
+        }
     }
 
     // 3. Cluster → category mapping (case-insensitive, trimmed)
-    const fromCluster = CLUSTER_TO_CATEGORY[lower];
+    const fromCluster = config.clusterToCategory[lower];
     if (fromCluster) {
         return fromCluster;
     }
 
-    // 4. Alias dictionary (normalized: stripped diacritics, collapsed ws, & → va)
+    // 4. Sorted-token match (word-order permutations)
     const normalized = normalizeForLookup(trimmed);
-    const fromAlias = CATEGORY_ALIASES[normalized];
-    if (fromAlias) {
-        return fromAlias;
-    }
-
-    // 5. Sorted-token match (word-order permutations)
     const sortedKey = normalized.split(' ').sort().join(' ');
-    const fromSorted = SORTED_TOKEN_TO_SLUG.get(sortedKey);
-    if (fromSorted) {
-        return fromSorted;
+
+    // Build sorted-token lookup from categories and clusters
+    for (const cat of config.categories) {
+        const catKey = normalizeForLookup(cat.name).split(' ').sort().join(' ');
+        if (catKey === sortedKey) return cat.slug;
+    }
+    for (const [cluster, slug] of Object.entries(config.clusterToCategory)) {
+        const clusterKey = normalizeForLookup(cluster).split(' ').sort().join(' ');
+        if (clusterKey === sortedKey) return slug;
     }
 
-    // 6. Not resolvable — caller should HOLD
+    // 5. Not resolvable — caller should HOLD
     return null;
 }
 
@@ -418,6 +369,7 @@ export function resolveCategorySlug(input: string): string | null {
  * Returns undefined if slug is not canonical.
  */
 export function getCanonicalCategoryName(slug: string): string | undefined {
-    const entry = CANONICAL_CATEGORIES.find((c) => c.slug === slug);
+    const config = loadTaxonomyConfig();
+    const entry = config.categories.find((c) => c.slug === slug);
     return entry?.name;
 }

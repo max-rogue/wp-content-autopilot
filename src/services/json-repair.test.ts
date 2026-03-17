@@ -116,10 +116,10 @@ describe('tryParseJsonResponse', () => {
 {
   "outline_points": ["Introduction", "History", "Technique", "FAQ"],
   "facts": [
-    {"claim": "Golf originated in Scotland", "source_url": "https://example.com/golf-history"},
-    {"claim": "Tiger Woods has 82 PGA wins", "source_url": "https://example.com/tiger"}
+    {"claim": "This concept originated in research", "source_url": "https://example.com/history"},
+    {"claim": "This technique has 82 documented applications", "source_url": "https://example.com/applications"}
   ],
-  "definitions": ["Handicap: A measure of a golfer's ability"],
+  "definitions": ["Handicap: A measure of a practitioner's ability"],
   "unknowns": [],
   "citations_required": true,
   "citations_present": true

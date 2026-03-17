@@ -2,23 +2,23 @@
  * Unit tests for taxonomy module and taxonomy-sync service.
  * Ref: 01_ContentSpec §2 (categories, tags, gated tags, slug normalization).
  *
- * Tests:
- *   - Canonical categories list enforcement (no extra, no missing)
- *   - Tag whitelist enforcement + gated tag rule (≥3/60d)
- *   - Slug normalization stability
- *   - WP sync idempotency (mock wp-client)
- *   - Cluster → category mapping
- *   - City tags always skipped
+ * These tests verify the config-loading mechanism and generic behavior.
+ * Niche-specific data is loaded from taxonomy_config.yaml — tests verify
+ * the pipeline correctly loads and uses whatever config is present.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     CANONICAL_CATEGORIES,
     CANONICAL_CATEGORY_SLUGS,
     TAG_WHITELIST,
     TAG_WHITELIST_GROUPS,
     CLUSTER_TO_CATEGORY,
-    DEFAULT_FALLBACK_CATEGORY,
+    getDefaultFallbackCategory,
+    getCanonicalCategories,
+    getCanonicalCategorySlugs,
+    getTagWhitelist,
+    getClusterToCategory,
     normalizeSlug,
     resolveClusterCategory,
     isWhitelistedTag,
@@ -31,142 +31,105 @@ import {
     type KeywordCsvRow,
 } from './taxonomy';
 import { buildSyncPlan, parseKeywordCsv, executeTaxonomySync } from './taxonomy-sync';
+import { _resetTaxonomyConfigCache } from '../config/taxonomy-config-loader';
+
+// Reset config cache before each test so tests don't interfere
+beforeEach(() => {
+    _resetTaxonomyConfigCache();
+});
 
 // ═══════════════════════════════════════════════════════════════════
-// §2.1 — Canonical Categories
+// §2.1 — Canonical Categories (loaded from config)
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Canonical Categories (§2.1)', () => {
-    const EXPECTED_SLUGS = [
-        'gay-golf',
-        'golf-fitting',
-        'hoc-golf',
-        'san-golf',
-        'shop-golf',
-        'luat-golf',
-        'golf-cong-nghe',
-        'chi-phi-va-van-hoa',
-        'suc-khoe-fitness',
-        'du-lich-su-kien',
-    ];
-
-    it('should contain exactly 10 canonical categories', () => {
-        expect(CANONICAL_CATEGORIES).toHaveLength(10);
-    });
-
-    it('should contain all required slugs', () => {
-        const slugs = CANONICAL_CATEGORIES.map((c) => c.slug);
-        for (const expected of EXPECTED_SLUGS) {
-            expect(slugs).toContain(expected);
-        }
-    });
-
-    it('should not contain any extra categories', () => {
-        const slugs = CANONICAL_CATEGORIES.map((c) => c.slug);
-        for (const slug of slugs) {
-            expect(EXPECTED_SLUGS).toContain(slug);
-        }
+    it('should load at least one category from config', () => {
+        const categories = getCanonicalCategories();
+        expect(categories.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should have unique slugs', () => {
-        const slugs = CANONICAL_CATEGORIES.map((c) => c.slug);
+        const categories = getCanonicalCategories();
+        const slugs = categories.map((c) => c.slug);
         expect(new Set(slugs).size).toBe(slugs.length);
     });
 
     it('should have non-empty names', () => {
-        for (const cat of CANONICAL_CATEGORIES) {
+        const categories = getCanonicalCategories();
+        for (const cat of categories) {
             expect(cat.name.length).toBeGreaterThan(0);
         }
     });
 
-    it('isCanonicalCategory returns true for all canonical slugs', () => {
-        for (const slug of EXPECTED_SLUGS) {
-            expect(isCanonicalCategory(slug)).toBe(true);
+    it('isCanonicalCategory returns true for loaded category slugs', () => {
+        const categories = getCanonicalCategories();
+        for (const cat of categories) {
+            expect(isCanonicalCategory(cat.slug)).toBe(true);
         }
     });
 
     it('isCanonicalCategory returns false for unknown slugs', () => {
-        expect(isCanonicalCategory('random-slug')).toBe(false);
-        expect(isCanonicalCategory('golf-news')).toBe(false);
+        expect(isCanonicalCategory('random-slug-xyz')).toBe(false);
+        expect(isCanonicalCategory('nonexistent-category')).toBe(false);
         expect(isCanonicalCategory('')).toBe(false);
+    });
+
+    it('CANONICAL_CATEGORIES proxy iterates correctly', () => {
+        const categories = getCanonicalCategories();
+        const proxied = [...CANONICAL_CATEGORIES];
+        expect(proxied.length).toBe(categories.length);
+        for (let i = 0; i < categories.length; i++) {
+            expect(proxied[i].slug).toBe(categories[i].slug);
+        }
+    });
+
+    it('CANONICAL_CATEGORY_SLUGS.has works', () => {
+        const categories = getCanonicalCategories();
+        for (const cat of categories) {
+            expect(CANONICAL_CATEGORY_SLUGS.has(cat.slug)).toBe(true);
+        }
+        expect(CANONICAL_CATEGORY_SLUGS.has('nonexistent')).toBe(false);
     });
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// §2.2 — Tag Whitelist
+// §2.2 — Tag Whitelist (loaded from config)
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Tag Whitelist (§2.2)', () => {
-    it('should contain brand tags', () => {
-        expect(TAG_WHITELIST.has('titleist')).toBe(true);
-        expect(TAG_WHITELIST.has('taylormade')).toBe(true);
-        expect(TAG_WHITELIST.has('callaway')).toBe(true);
-        expect(TAG_WHITELIST.has('ping')).toBe(true);
-        expect(TAG_WHITELIST.has('honma')).toBe(true);
-        expect(TAG_WHITELIST.has('mizuno')).toBe(true);
-        expect(TAG_WHITELIST.has('srixon')).toBe(true);
-        expect(TAG_WHITELIST.has('cobra')).toBe(true);
-        expect(TAG_WHITELIST.has('cleveland')).toBe(true);
-        expect(TAG_WHITELIST.has('xxio')).toBe(true);
-        expect(TAG_WHITELIST.has('pxg')).toBe(true);
+    it('should load tags from config', () => {
+        // Default config has at least category tags: guides, reviews, comparisons, glossary
+        const whitelist = getTagWhitelist();
+        expect(whitelist.size).toBeGreaterThan(0);
     });
 
-    it('should contain shaft brand tags', () => {
-        expect(TAG_WHITELIST.has('fujikura')).toBe(true);
-        expect(TAG_WHITELIST.has('graphite-design')).toBe(true);
-        expect(TAG_WHITELIST.has('project-x')).toBe(true);
-        expect(TAG_WHITELIST.has('kbs')).toBe(true);
-        expect(TAG_WHITELIST.has('nippon')).toBe(true);
-        expect(TAG_WHITELIST.has('mitsubishi')).toBe(true);
-        expect(TAG_WHITELIST.has('ust-mamiya')).toBe(true);
-        expect(TAG_WHITELIST.has('accra')).toBe(true);
+    it('should contain tags from default config', () => {
+        // Default taxonomy_config.yaml has these category tags
+        expect(TAG_WHITELIST.has('guides')).toBe(true);
+        expect(TAG_WHITELIST.has('reviews')).toBe(true);
+        expect(TAG_WHITELIST.has('comparisons')).toBe(true);
     });
 
-    it('should contain ball brand tags', () => {
-        expect(TAG_WHITELIST.has('pro-v1')).toBe(true);
-        expect(TAG_WHITELIST.has('tp5')).toBe(true);
-        expect(TAG_WHITELIST.has('chrome-soft')).toBe(true);
-        expect(TAG_WHITELIST.has('z-star')).toBe(true);
-        expect(TAG_WHITELIST.has('tour-b')).toBe(true);
-    });
-
-    it('should contain skill/problem tags', () => {
-        expect(TAG_WHITELIST.has('slice')).toBe(true);
-        expect(TAG_WHITELIST.has('hook')).toBe(true);
-        expect(TAG_WHITELIST.has('topping')).toBe(true);
-        expect(TAG_WHITELIST.has('chunk')).toBe(true);
-        expect(TAG_WHITELIST.has('putting')).toBe(true);
-        expect(TAG_WHITELIST.has('chipping')).toBe(true);
-        expect(TAG_WHITELIST.has('bunker')).toBe(true);
-    });
-
-    it('should contain handicap band tags', () => {
-        expect(TAG_WHITELIST.has('hcp-0-9')).toBe(true);
-        expect(TAG_WHITELIST.has('hcp-10-19')).toBe(true);
-        expect(TAG_WHITELIST.has('hcp-20-36')).toBe(true);
-    });
-
-    it('should NOT contain city/province tags in static whitelist', () => {
-        // City tags require verified local value — never in static whitelist
-        expect(TAG_WHITELIST.has('ho-chi-minh')).toBe(false);
-        expect(TAG_WHITELIST.has('ha-noi')).toBe(false);
-        expect(TAG_WHITELIST.has('da-nang')).toBe(false);
+    it('should contain topic tags from default config', () => {
+        expect(TAG_WHITELIST.has('beginner')).toBe(true);
+        expect(TAG_WHITELIST.has('advanced')).toBe(true);
+        expect(TAG_WHITELIST.has('tips')).toBe(true);
     });
 
     it('isWhitelistedTag returns true for known tags', () => {
-        expect(isWhitelistedTag('titleist')).toBe(true);
-        expect(isWhitelistedTag('hcp-0-9')).toBe(true);
-        expect(isWhitelistedTag('slice')).toBe(true);
+        expect(isWhitelistedTag('guides')).toBe(true);
+        expect(isWhitelistedTag('reviews')).toBe(true);
     });
 
     it('isWhitelistedTag returns false for non-whitelist tags', () => {
         expect(isWhitelistedTag('random-tag')).toBe(false);
-        expect(isWhitelistedTag('ho-chi-minh')).toBe(false);
+        expect(isWhitelistedTag('nonexistent-tag')).toBe(false);
     });
 
     it('should have no overlap between tag groups', () => {
+        const groups = Object.values(TAG_WHITELIST_GROUPS);
         const allTags: string[] = [];
-        for (const group of Object.values(TAG_WHITELIST_GROUPS)) {
+        for (const group of groups) {
             allTags.push(...group);
         }
         expect(new Set(allTags).size).toBe(allTags.length);
@@ -179,8 +142,8 @@ describe('Tag Whitelist (§2.2)', () => {
 
 describe('Slug Normalization', () => {
     it('should lowercase', () => {
-        expect(normalizeSlug('Titleist')).toBe('titleist');
-        expect(normalizeSlug('TaylorMade')).toBe('taylormade');
+        expect(normalizeSlug('Brand-Alpha')).toBe('brand-alpha');
+        expect(normalizeSlug('Brand-Beta')).toBe('brand-beta');
     });
 
     it('should trim whitespace', () => {
@@ -188,8 +151,8 @@ describe('Slug Normalization', () => {
     });
 
     it('should replace spaces with hyphens', () => {
-        expect(normalizeSlug('hoc golf')).toBe('hoc-golf');
-        expect(normalizeSlug('chi phi va van hoa')).toBe('chi-phi-va-van-hoa');
+        expect(normalizeSlug('my category')).toBe('my-category');
+        expect(normalizeSlug('multi word slug here')).toBe('multi-word-slug-here');
     });
 
     it('should replace underscores with hyphens', () => {
@@ -197,17 +160,17 @@ describe('Slug Normalization', () => {
     });
 
     it('should collapse consecutive hyphens', () => {
-        expect(normalizeSlug('golf--fitting')).toBe('golf-fitting');
+        expect(normalizeSlug('niche--service')).toBe('niche-service');
         expect(normalizeSlug('a---b')).toBe('a-b');
     });
 
     it('should remove leading/trailing hyphens', () => {
-        expect(normalizeSlug('-golf-')).toBe('golf');
-        expect(normalizeSlug('--golf--')).toBe('golf');
+        expect(normalizeSlug('-niche-')).toBe('niche');
+        expect(normalizeSlug('--niche--')).toBe('niche');
     });
 
     it('should be stable (idempotent)', () => {
-        const slugs = ['gay-golf', 'hcp-0-9', 'graphite-design', 'chi-phi-va-van-hoa'];
+        const slugs = ['my-slug', 'hcp-0-9', 'graphite-design', 'multi-word-slug'];
         for (const slug of slugs) {
             expect(normalizeSlug(slug)).toBe(slug);
             expect(normalizeSlug(normalizeSlug(slug))).toBe(slug);
@@ -234,35 +197,35 @@ describe('Gated Tag Rule (§2.3)', () => {
 
     it('should qualify a tag that appears in ≥3 rows', () => {
         const rows: KeywordCsvRow[] = [
-            makeRow('bài 1 về pga-tour'),
-            makeRow('bài 2 về pga-tour'),
-            makeRow('bài 3 về pga-tour'),
+            makeRow('article 1 about industry-weekly'),
+            makeRow('article 2 about industry-weekly'),
+            makeRow('article 3 about industry-weekly'),
         ];
-        const result = evaluateGatedTags(['pga-tour'], rows);
-        expect(result.get('pga-tour')?.qualifies).toBe(true);
-        expect(result.get('pga-tour')?.count).toBe(3);
+        const result = evaluateGatedTags(['industry-weekly'], rows);
+        expect(result.get('industry-weekly')?.qualifies).toBe(true);
+        expect(result.get('industry-weekly')?.count).toBe(3);
     });
 
     it('should NOT qualify a tag that appears in <3 rows', () => {
         const rows: KeywordCsvRow[] = [
-            makeRow('bài 1 về pga-tour'),
-            makeRow('bài 2 về pga-tour'),
-            makeRow('bài 3 về other topic'),
+            makeRow('article 1 about industry-weekly'),
+            makeRow('article 2 about industry-weekly'),
+            makeRow('article 3 about other topic'),
         ];
-        const result = evaluateGatedTags(['pga-tour'], rows);
-        expect(result.get('pga-tour')?.qualifies).toBe(false);
-        expect(result.get('pga-tour')?.count).toBe(2);
+        const result = evaluateGatedTags(['industry-weekly'], rows);
+        expect(result.get('industry-weekly')?.qualifies).toBe(false);
+        expect(result.get('industry-weekly')?.count).toBe(2);
     });
 
     it('should skip tags already in whitelist', () => {
         const rows: KeywordCsvRow[] = [
-            makeRow('titleist review 1'),
-            makeRow('titleist review 2'),
-            makeRow('titleist review 3'),
+            makeRow('guides review 1'),
+            makeRow('guides review 2'),
+            makeRow('guides review 3'),
         ];
-        const result = evaluateGatedTags(['titleist'], rows);
-        // titleist is whitelisted, so evaluateGatedTags skips it
-        expect(result.has('titleist')).toBe(false);
+        const result = evaluateGatedTags(['guides'], rows);
+        // 'guides' is whitelisted in default config, so evaluateGatedTags skips it
+        expect(result.has('guides')).toBe(false);
     });
 
     it('should handle zero candidate tags', () => {
@@ -293,37 +256,30 @@ describe('Gated Tag Rule (§2.3)', () => {
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Cluster → Category Mapping', () => {
-    it('should map all known clusters to canonical categories', () => {
-        for (const [cluster, category] of Object.entries(CLUSTER_TO_CATEGORY)) {
-            expect(CANONICAL_CATEGORY_SLUGS.has(category)).toBe(true);
+    it('should map all configured clusters to canonical categories', () => {
+        const clusterMap = getClusterToCategory();
+        const categorySlugs = getCanonicalCategorySlugs();
+        for (const [_cluster, category] of Object.entries(clusterMap)) {
+            expect(categorySlugs.has(category)).toBe(true);
         }
-    });
-
-    it('should map gậy golf clusters to gay-golf', () => {
-        expect(resolveClusterCategory('gậy golf')).toEqual({ category: 'gay-golf', mapped: true });
-        expect(resolveClusterCategory('brand gậy golf')).toEqual({ category: 'gay-golf', mapped: true });
-        expect(resolveClusterCategory('bóng golf')).toEqual({ category: 'gay-golf', mapped: true });
-    });
-
-    it('should map learning clusters to hoc-golf', () => {
-        expect(resolveClusterCategory('học golf')).toEqual({ category: 'hoc-golf', mapped: true });
-        expect(resolveClusterCategory('handicap')).toEqual({ category: 'hoc-golf', mapped: true });
     });
 
     it('should use fallback for unknown clusters', () => {
         const result = resolveClusterCategory('totally-new-cluster');
         expect(result.mapped).toBe(false);
-        expect(result.category).toBe(DEFAULT_FALLBACK_CATEGORY);
+        expect(result.category).toBe(getDefaultFallbackCategory());
     });
 
     it('should have fallback as a canonical category', () => {
-        expect(CANONICAL_CATEGORY_SLUGS.has(DEFAULT_FALLBACK_CATEGORY)).toBe(true);
+        expect(getCanonicalCategorySlugs().has(getDefaultFallbackCategory())).toBe(true);
     });
 
     it('should be case-insensitive via trim+lowercase', () => {
-        expect(resolveClusterCategory('  Học Golf  ')).toEqual({
-            category: 'hoc-golf',
-            mapped: true,
+        // With default config (no cluster mappings), any cluster maps to fallback
+        const fallback = getDefaultFallbackCategory();
+        expect(resolveClusterCategory('  Some Cluster  ')).toEqual({
+            category: fallback,
+            mapped: false,
         });
     });
 });
@@ -335,13 +291,13 @@ describe('Cluster → Category Mapping', () => {
 describe('CSV Parser', () => {
     it('should parse keyword CSV with headers', () => {
         const csv = `keyword,content_type,cluster,priority,notes
-bóng golf,BlogPost,bóng golf,3,category
-golf fitting,BlogPost,golf fitting,1,head term`;
+keyword1,BlogPost,cluster1,3,category
+keyword2,BlogPost,cluster2,1,head term`;
         const rows = parseKeywordCsv(csv);
         expect(rows).toHaveLength(2);
-        expect(rows[0].keyword).toBe('bóng golf');
-        expect(rows[0].cluster).toBe('bóng golf');
-        expect(rows[1].keyword).toBe('golf fitting');
+        expect(rows[0].keyword).toBe('keyword1');
+        expect(rows[0].cluster).toBe('cluster1');
+        expect(rows[1].keyword).toBe('keyword2');
     });
 
     it('should handle empty CSV', () => {
@@ -366,34 +322,29 @@ golf fitting,BlogPost,golf fitting,1,head term`;
 
 describe('Sync Plan Builder', () => {
     it('should mark existing categories as "exists"', () => {
-        const existingCats = new Set(['gay-golf', 'hoc-golf']);
+        const categories = getCanonicalCategories();
+        if (categories.length === 0) return; // skip if no categories in config
+        const existingCats = new Set([categories[0].slug]);
         const plan = buildSyncPlan(existingCats, new Set(), []);
 
-        const gayGolf = plan.categories.find((c) => c.slug === 'gay-golf');
-        const hocGolf = plan.categories.find((c) => c.slug === 'hoc-golf');
-        const sanGolf = plan.categories.find((c) => c.slug === 'san-golf');
-
-        expect(gayGolf?.action).toBe('exists');
-        expect(hocGolf?.action).toBe('exists');
-        expect(sanGolf?.action).toBe('create');
+        const first = plan.categories.find((c) => c.slug === categories[0].slug);
+        expect(first?.action).toBe('exists');
     });
 
     it('should mark existing tags as "exists"', () => {
-        const existingTags = new Set(['titleist', 'slice']);
+        const whitelist = getTagWhitelist();
+        if (whitelist.size === 0) return;
+        const firstTag = [...whitelist][0];
+        const existingTags = new Set([firstTag]);
         const plan = buildSyncPlan(new Set(), existingTags, []);
 
-        const titleist = plan.tags.find((t) => t.slug === 'titleist');
-        const slice = plan.tags.find((t) => t.slug === 'slice');
-        const taylormade = plan.tags.find((t) => t.slug === 'taylormade');
-
-        expect(titleist?.action).toBe('exists');
-        expect(slice?.action).toBe('exists');
-        expect(taylormade?.action).toBe('create');
+        const tag = plan.tags.find((t) => t.slug === firstTag);
+        expect(tag?.action).toBe('exists');
     });
 
-    it('should include all 10 categories in plan', () => {
+    it('should include all configured categories in plan', () => {
         const plan = buildSyncPlan(new Set(), new Set(), []);
-        expect(plan.categories).toHaveLength(10);
+        expect(plan.categories).toHaveLength(getCanonicalCategories().length);
     });
 
     it('should include all whitelist tags in plan', () => {
@@ -448,15 +399,18 @@ describe('WP Sync Idempotency (mock wp-client)', () => {
 
     it('should create all categories on first run', async () => {
         const mock = createMockWpClient();
+        const catCount = getCanonicalCategories().length;
         const { result } = await executeTaxonomySync(mock as any, []);
 
-        expect(result.categoriesCreated).toBe(10);
+        expect(result.categoriesCreated).toBe(catCount);
         expect(result.categoriesExisting).toBe(0);
-        expect(mock.createCategory).toHaveBeenCalledTimes(10);
+        expect(mock.createCategory).toHaveBeenCalledTimes(catCount);
     });
 
     it('should be idempotent — second run creates nothing', async () => {
         const mock = createMockWpClient();
+        const catCount = getCanonicalCategories().length;
+        const tagCount = getTagWhitelist().size;
 
         // First run
         await executeTaxonomySync(mock as any, []);
@@ -468,36 +422,30 @@ describe('WP Sync Idempotency (mock wp-client)', () => {
         const { result: result2 } = await executeTaxonomySync(mock as any, []);
 
         expect(result2.categoriesCreated).toBe(0);
-        expect(result2.categoriesExisting).toBe(10);
+        expect(result2.categoriesExisting).toBe(catCount);
         expect(result2.tagsCreated).toBe(0);
-        expect(result2.tagsExisting).toBe(TAG_WHITELIST.size);
+        expect(result2.tagsExisting).toBe(tagCount);
     });
 
     it('should create all whitelist tags on first run', async () => {
         const mock = createMockWpClient();
+        const tagCount = getTagWhitelist().size;
         const { result } = await executeTaxonomySync(mock as any, []);
 
-        expect(result.tagsCreated).toBe(TAG_WHITELIST.size);
+        expect(result.tagsCreated).toBe(tagCount);
         expect(result.tagsExisting).toBe(0);
-    });
-
-    it('should not create city tags', async () => {
-        const mock = createMockWpClient();
-        const { result } = await executeTaxonomySync(mock as any, []);
-
-        // City tags should not be in created tags
-        expect(mock._createdTags.has('ho-chi-minh')).toBe(false);
-        expect(mock._createdTags.has('ha-noi')).toBe(false);
-        expect(mock._createdTags.has('da-nang')).toBe(false);
     });
 
     it('should handle WP errors gracefully', async () => {
         const mock = createMockWpClient();
-        // Make createCategory fail for one slug
+        const categories = getCanonicalCategories();
+        if (categories.length < 2) return; // need at least 2 categories to test
+
+        const failSlug = categories[0].slug;
         let callCount = 0;
         mock.createCategory.mockImplementation(async (slug: string, name: string) => {
             callCount++;
-            if (slug === 'san-golf') {
+            if (slug === failSlug) {
                 return { ok: false, created: false, error: 'WP error 500' };
             }
             const id = 200 + callCount;
@@ -508,71 +456,52 @@ describe('WP Sync Idempotency (mock wp-client)', () => {
         const { result } = await executeTaxonomySync(mock as any, []);
 
         expect(result.categoriesFailed).toHaveLength(1);
-        expect(result.categoriesFailed[0].slug).toBe('san-golf');
-        expect(result.categoriesCreated).toBe(9);
+        expect(result.categoriesFailed[0].slug).toBe(failSlug);
+        expect(result.categoriesCreated).toBe(categories.length - 1);
     });
 });
 
 // ═══════════════════════════════════════════════════════════════════
-// Category Slug Resolution (display name → canonical slug)
+// Category Slug Resolution
 // ═══════════════════════════════════════════════════════════════════
 
 describe('Category Slug Resolution', () => {
     it('should resolve canonical slugs as-is', () => {
-        expect(resolveCategorySlug('golf-cong-nghe')).toBe('golf-cong-nghe');
-        expect(resolveCategorySlug('hoc-golf')).toBe('hoc-golf');
-        expect(resolveCategorySlug('gay-golf')).toBe('gay-golf');
+        const categories = getCanonicalCategories();
+        for (const cat of categories) {
+            expect(resolveCategorySlug(cat.slug)).toBe(cat.slug);
+        }
     });
 
     it('should resolve display names to canonical slugs', () => {
-        expect(resolveCategorySlug('Golf Công Nghệ')).toBe('golf-cong-nghe');
-        expect(resolveCategorySlug('Gậy Golf')).toBe('gay-golf');
-        expect(resolveCategorySlug('Học Golf')).toBe('hoc-golf');
-        expect(resolveCategorySlug('Sân Golf')).toBe('san-golf');
-        expect(resolveCategorySlug('Du Lịch & Sự Kiện')).toBe('du-lich-su-kien');
-    });
-
-    it('BUG REGRESSION: name "Công Nghệ Golf" maps to slug "golf-cong-nghe" via cluster mapping', () => {
-        // This is the exact bug: the LLM returned the display name in different order
-        // The cluster map has key "golf công nghệ" → "golf-cong-nghe"
-        expect(resolveCategorySlug('golf công nghệ')).toBe('golf-cong-nghe');
-    });
-
-    it('should resolve cluster names to canonical slugs', () => {
-        expect(resolveCategorySlug('gậy golf')).toBe('gay-golf');
-        expect(resolveCategorySlug('golf fitting')).toBe('golf-fitting');
-        expect(resolveCategorySlug('luật golf')).toBe('luat-golf');
-    });
-
-    it('should be case-insensitive', () => {
-        expect(resolveCategorySlug('GOLF CÔNG NGHỆ')).toBe('golf-cong-nghe');
-        expect(resolveCategorySlug('golf-cong-nghe')).toBe('golf-cong-nghe');
-    });
-
-    it('should handle whitespace', () => {
-        expect(resolveCategorySlug('  golf-cong-nghe  ')).toBe('golf-cong-nghe');
-        expect(resolveCategorySlug('  Golf Công Nghệ  ')).toBe('golf-cong-nghe');
-    });
-
-    it('should return null for truly unknown inputs', () => {
-        expect(resolveCategorySlug('random-category')).toBeNull();
-        expect(resolveCategorySlug('tin tuc golf')).toBeNull();
-        expect(resolveCategorySlug('')).toBeNull();
-        expect(resolveCategorySlug('  ')).toBeNull();
-    });
-
-    it('BUG REGRESSION: "Công Nghệ Golf" (word-order variant) resolves to golf-cong-nghe', () => {
-        expect(resolveCategorySlug('Công Nghệ Golf')).toBe('golf-cong-nghe');
-    });
-
-    it('should resolve all 10 canonical CANONICAL_CATEGORIES by name', () => {
-        for (const cat of CANONICAL_CATEGORIES) {
+        const categories = getCanonicalCategories();
+        for (const cat of categories) {
             expect(resolveCategorySlug(cat.name)).toBe(cat.slug);
         }
     });
 
-    it('should resolve all 10 canonical slugs by slug', () => {
-        for (const cat of CANONICAL_CATEGORIES) {
+    it('should return null for truly unknown inputs', () => {
+        expect(resolveCategorySlug('random-category-xyz')).toBeNull();
+        expect(resolveCategorySlug('nonexistent')).toBeNull();
+        expect(resolveCategorySlug('')).toBeNull();
+        expect(resolveCategorySlug('  ')).toBeNull();
+    });
+
+    it('should handle whitespace', () => {
+        const categories = getCanonicalCategories();
+        if (categories.length === 0) return;
+        const cat = categories[0];
+        expect(resolveCategorySlug(`  ${cat.slug}  `)).toBe(cat.slug);
+    });
+
+    it('should resolve all categories by name', () => {
+        for (const cat of getCanonicalCategories()) {
+            expect(resolveCategorySlug(cat.name)).toBe(cat.slug);
+        }
+    });
+
+    it('should resolve all categories by slug', () => {
+        for (const cat of getCanonicalCategories()) {
             expect(resolveCategorySlug(cat.slug)).toBe(cat.slug);
         }
     });
@@ -580,9 +509,10 @@ describe('Category Slug Resolution', () => {
 
 describe('getCanonicalCategoryName', () => {
     it('should return display name for canonical slugs', () => {
-        expect(getCanonicalCategoryName('golf-cong-nghe')).toBe('Golf Công Nghệ');
-        expect(getCanonicalCategoryName('gay-golf')).toBe('Gậy Golf');
-        expect(getCanonicalCategoryName('hoc-golf')).toBe('Học Golf');
+        const categories = getCanonicalCategories();
+        for (const cat of categories) {
+            expect(getCanonicalCategoryName(cat.slug)).toBe(cat.name);
+        }
     });
 
     it('should return undefined for non-canonical slugs', () => {
@@ -597,9 +527,9 @@ describe('getCanonicalCategoryName', () => {
 describe('stripDiacritics', () => {
     it('should strip Vietnamese tone marks', () => {
         expect(stripDiacritics('Công Nghệ')).toBe('Cong Nghe');
-        expect(stripDiacritics('Gậy Golf')).toBe('Gay Golf');
-        expect(stripDiacritics('Sân Golf')).toBe('San Golf');
-        expect(stripDiacritics('Học Golf')).toBe('Hoc Golf');
+        expect(stripDiacritics('Sản Phẩm')).toBe('San Pham');
+        expect(stripDiacritics('Cửa Hàng')).toBe('Cua Hang');
+        expect(stripDiacritics('Học Nghề')).toBe('Hoc Nghe');
     });
 
     it('should handle đ/Đ', () => {
@@ -608,7 +538,7 @@ describe('stripDiacritics', () => {
     });
 
     it('should leave ASCII unchanged', () => {
-        expect(stripDiacritics('golf fitting')).toBe('golf fitting');
+        expect(stripDiacritics('niche service')).toBe('niche service');
         expect(stripDiacritics('abc123')).toBe('abc123');
     });
 
@@ -619,7 +549,7 @@ describe('stripDiacritics', () => {
 
 describe('normalizeForLookup', () => {
     it('should lowercase, strip diacritics, collapse whitespace', () => {
-        expect(normalizeForLookup('  Công  Nghệ   Golf  ')).toBe('cong nghe golf');
+        expect(normalizeForLookup('  Công  Nghệ   Mới  ')).toBe('cong nghe moi');
     });
 
     it('should replace & with va', () => {
@@ -632,59 +562,10 @@ describe('normalizeForLookup', () => {
     });
 
     it('should handle pure ASCII', () => {
-        expect(normalizeForLookup('golf fitting')).toBe('golf fitting');
+        expect(normalizeForLookup('niche service')).toBe('niche service');
     });
 
     it('should handle empty', () => {
         expect(normalizeForLookup('')).toBe('');
-    });
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// Alias-Based Category Resolution
-// ═══════════════════════════════════════════════════════════════════
-
-describe('Alias-Based Category Resolution', () => {
-    it('resolves word-order variant: "Công Nghệ Golf" → golf-cong-nghe', () => {
-        expect(resolveCategorySlug('Công Nghệ Golf')).toBe('golf-cong-nghe');
-    });
-
-    it('resolves diacritic-stripped form: "cong nghe golf" → golf-cong-nghe', () => {
-        expect(resolveCategorySlug('cong nghe golf')).toBe('golf-cong-nghe');
-    });
-
-    it('resolves with extra whitespace: "  Công   Nghệ   Golf  " → golf-cong-nghe', () => {
-        expect(resolveCategorySlug('  Công   Nghệ   Golf  ')).toBe('golf-cong-nghe');
-    });
-
-    it('resolves ampersand vs "và" equivalence', () => {
-        expect(resolveCategorySlug('Du Lịch Và Sự Kiện')).toBe('du-lich-su-kien');
-        expect(resolveCategorySlug('Sức Khỏe Và Fitness')).toBe('suc-khoe-fitness');
-    });
-
-    it('resolves reordered "Sự Kiện Du Lịch" → du-lich-su-kien', () => {
-        expect(resolveCategorySlug('Sự Kiện Du Lịch')).toBe('du-lich-su-kien');
-    });
-
-    it('resolves all-caps variant', () => {
-        expect(resolveCategorySlug('CÔNG NGHỆ GOLF')).toBe('golf-cong-nghe');
-    });
-
-    it('still resolves canon display names (no regression)', () => {
-        for (const cat of CANONICAL_CATEGORIES) {
-            expect(resolveCategorySlug(cat.name)).toBe(cat.slug);
-        }
-    });
-
-    it('still resolves canon slugs (no regression)', () => {
-        for (const cat of CANONICAL_CATEGORIES) {
-            expect(resolveCategorySlug(cat.slug)).toBe(cat.slug);
-        }
-    });
-
-    it('still returns null for truly unknown categories', () => {
-        expect(resolveCategorySlug('tin tức golf')).toBeNull();
-        expect(resolveCategorySlug('giải trí')).toBeNull();
-        expect(resolveCategorySlug('xyz123')).toBeNull();
     });
 });

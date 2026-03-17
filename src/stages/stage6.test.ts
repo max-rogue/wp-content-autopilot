@@ -117,8 +117,8 @@ function makeStage3(): Stage3Output {
         content_markdown: '# Test',
         excerpt: 'Test excerpt',
         suggested_slug: 'test-slug',
-        category: 'hoc-golf',
-        tags: ['golf'],
+        category: 'general',
+        tags: ['guides'],
         focus_keyword: 'test keyword',
         additional_keywords: [],
         meta_title: 'Test | MySite',
@@ -160,7 +160,7 @@ function makeStage5Hold(): Stage5Output {
             robots: 'index,follow',
             schema_type: 'BlogPosting',
         },
-        taxonomy: { category: 'hoc-golf', tags: [], dropped_tags: [] },
+        taxonomy: { category: 'general', tags: [], dropped_tags: [] },
         gate_results: {},
         reasons: ['test_hold_reason'],
     };
@@ -179,7 +179,7 @@ function makeStage5Draft(): Stage5Output {
             robots: 'index,follow',
             schema_type: 'BlogPosting',
         },
-        taxonomy: { category: 'hoc-golf', tags: ['titleist'], dropped_tags: [] },
+        taxonomy: { category: 'general', tags: ['guides'], dropped_tags: [] },
         gate_results: {},
         reasons: [],
     };
@@ -198,7 +198,7 @@ function makeStage5Publish(): Stage5Output {
             robots: 'index,follow',
             schema_type: 'BlogPosting',
         },
-        taxonomy: { category: 'hoc-golf', tags: ['titleist'], dropped_tags: [] },
+        taxonomy: { category: 'general', tags: ['guides'], dropped_tags: [] },
         gate_results: {},
         reasons: [],
     };
@@ -246,10 +246,10 @@ function mockWpClient(opts?: {
 }) {
     const categoryResult = opts && 'findCategoryResult' in opts
         ? (opts.findCategoryResult ?? undefined)
-        : { id: 1, slug: 'hoc-golf' };
+        : { id: 1, slug: 'general' };
     const tagResult = opts && 'findTagResult' in opts
         ? (opts.findTagResult ?? undefined)
-        : { id: 1, slug: 'golf' };
+        : { id: 1, slug: 'guides' };
 
     return {
         createDraft: vi.fn().mockResolvedValue({
@@ -495,7 +495,7 @@ describe('Stage 6 — Publisher', () => {
 
         // Clear stage5 taxonomy category so stage3 path is tested
         const s5 = makeStage5Draft();
-        s5.taxonomy = { category: '', tags: ['titleist'], dropped_tags: [] };
+        s5.taxonomy = { category: '', tags: ['guides'], dropped_tags: [] };
 
         const result = await runStage6({
             queueId,
@@ -515,23 +515,23 @@ describe('Stage 6 — Publisher', () => {
 
     // ── BUG REGRESSION: display name resolves to slug ─────────────
 
-    it('BUG REGRESSION: stage3.category="Golf Công Nghệ" resolves to slug and succeeds when WP has it', async () => {
+    it('BUG REGRESSION: stage3.category="General" display name resolves to slug and succeeds when WP has it', async () => {
         const queueId = uuid();
         insertQueueItem(queueRepo, queueId);
 
-        // WP has the category with slug 'golf-cong-nghe' even though display name differs
+        // WP has the category with slug 'general' even though display name differs
         const wpClient = mockWpClient({
             createDraftId: 200,
-            findCategoryResult: { id: 42, slug: 'golf-cong-nghe' },
+            findCategoryResult: { id: 42, slug: 'general' },
         });
         const rankMath = mockRankMathService();
 
         const s3 = makeStage3();
-        s3.category = 'Golf Công Nghệ'; // display name, not slug
+        s3.category = 'General'; // display name, not slug
 
         // Clear stage5 taxonomy category so stage3 label-resolution path is tested
         const s5 = makeStage5Draft();
-        s5.taxonomy = { category: '', tags: ['titleist'], dropped_tags: [] };
+        s5.taxonomy = { category: '', tags: ['guides'], dropped_tags: [] };
 
         const result = await runStage6({
             queueId,
@@ -549,7 +549,7 @@ describe('Stage 6 — Publisher', () => {
         expect(result.output?.final_status).toBe('draft_wp');
         expect(result.output?.wp_post_id).toBe(200);
         // Should have been looked up by canonical slug, not display name
-        expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('golf-cong-nghe');
+        expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('general');
     });
 
     it('auto-creates category in WP when canonical slug is valid but WP category missing', async () => {
@@ -566,7 +566,7 @@ describe('Stage 6 — Publisher', () => {
         const rankMath = mockRankMathService();
 
         const s3 = makeStage3();
-        s3.category = 'hoc-golf'; // canonical slug
+        s3.category = 'general'; // canonical slug
 
         const result = await runStage6({
             queueId,
@@ -583,7 +583,7 @@ describe('Stage 6 — Publisher', () => {
         expect(result.ok).toBe(true);
         expect(result.output?.final_status).toBe('draft_wp');
         // createCategory should have been called with canonical slug and name
-        expect(wpClient.createCategory).toHaveBeenCalledWith('hoc-golf', 'Học Golf');
+        expect(wpClient.createCategory).toHaveBeenCalledWith('general', 'General');
     });
 
     it('non-canonical category input → HOLD', async () => {
@@ -598,7 +598,7 @@ describe('Stage 6 — Publisher', () => {
 
         // Clear stage5 taxonomy category so the HOLD path is reached
         const s5 = makeStage5Draft();
-        s5.taxonomy = { category: '', tags: ['titleist'], dropped_tags: [] };
+        s5.taxonomy = { category: '', tags: ['guides'], dropped_tags: [] };
 
         const result = await runStage6({
             queueId,
@@ -634,7 +634,7 @@ describe('Stage 6 — Publisher', () => {
         const rankMath = mockRankMathService();
 
         const s3 = makeStage3();
-        s3.category = 'hoc-golf'; // canonical slug, but WP create will fail
+        s3.category = 'general'; // canonical slug, but WP create will fail
 
         const result = await runStage6({
             queueId,
@@ -828,8 +828,8 @@ describe('Stage 6 — Publisher', () => {
 
         const s5 = makeStage5Draft();
         s5.taxonomy = {
-            category: 'hoc-golf',
-            tags: ['titleist', 'callaway'],
+            category: 'general',
+            tags: ['guides', 'reviews'],
             dropped_tags: [],
         };
 
@@ -861,8 +861,8 @@ describe('Stage 6 — Publisher', () => {
         const item = queueRepo.findById(queueId);
         expect(item?.wp_tag_not_found).not.toBeNull();
         const notFound = JSON.parse(item!.wp_tag_not_found!);
-        expect(notFound).toContain('titleist');
-        expect(notFound).toContain('callaway');
+        expect(notFound).toContain('guides');
+        expect(notFound).toContain('reviews');
     });
 
     it('drops tags from LLM that are not on whitelist → stores dropped_tags in queue', async () => {
@@ -874,8 +874,8 @@ describe('Stage 6 — Publisher', () => {
 
         const s5 = makeStage5Draft();
         s5.taxonomy = {
-            category: 'hoc-golf',
-            tags: ['titleist'], // only whitelisted tag
+            category: 'general',
+            tags: ['guides'], // only whitelisted tag
             dropped_tags: ['random-brand', 'fake-tag'], // dropped by tag gate
         };
 
@@ -906,18 +906,18 @@ describe('Stage 6 — Publisher', () => {
         const queueId = uuid();
         insertQueueItem(queueRepo, queueId);
 
-        // WP has 'titleist' (id=10) but NOT 'callaway'
+        // WP has 'guides' (id=10) but NOT 'reviews'
         const wpClient = mockWpClient({ createDraftId: 302 });
         wpClient.findTagBySlug = vi.fn().mockImplementation(async (slug: string) => {
-            if (slug === 'titleist') return { id: 10, slug: 'titleist' };
+            if (slug === 'guides') return { id: 10, slug: 'guides' };
             return undefined;
         });
         const rankMath = mockRankMathService();
 
         const s5 = makeStage5Draft();
         s5.taxonomy = {
-            category: 'hoc-golf',
-            tags: ['titleist', 'callaway'],
+            category: 'general',
+            tags: ['guides', 'reviews'],
             dropped_tags: [],
         };
 
@@ -941,11 +941,11 @@ describe('Stage 6 — Publisher', () => {
             expect.objectContaining({ tags: [10] })
         );
 
-        // wp_tag_not_found should include 'callaway'
+        // wp_tag_not_found should include 'reviews'
         const item = queueRepo.findById(queueId);
         const notFound = JSON.parse(item!.wp_tag_not_found!);
-        expect(notFound).toContain('callaway');
-        expect(notFound).not.toContain('titleist');
+        expect(notFound).toContain('reviews');
+        expect(notFound).not.toContain('guides');
     });
 
     // ── DB migration check ───────────────────────────────────────
@@ -1074,12 +1074,12 @@ describe('Stage 6 — Publisher', () => {
 
             const wpClient = mockWpClient({
                 createDraftId: 600,
-                findCategoryResult: { id: 77, slug: 'hoc-golf' },
+                findCategoryResult: { id: 77, slug: 'general' },
             });
             const rankMath = mockRankMathService();
 
             const s3 = makeStage3();
-            s3.category = 'Kinh nghiệm chơi Golf'; // unresolvable LLM label
+            s3.category = 'Random Unresolvable Label'; // unresolvable LLM label
 
             const result = await runStage6({
                 queueId,
@@ -1091,14 +1091,14 @@ describe('Stage 6 — Publisher', () => {
                 rankMathService: rankMath,
                 queueRepo,
                 contentIndexRepo,
-                csvCanonicalCategory: 'hoc-golf', // CSV provides correct slug
+                csvCanonicalCategory: 'general', // CSV provides correct slug
             });
 
             expect(result.ok).toBe(true);
             expect(result.output?.final_status).toBe('draft_wp');
             expect(result.output?.wp_post_id).toBe(600);
             // Should resolve category by CSV slug, not by raw_category label
-            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('hoc-golf');
+            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('general');
         });
 
         it('CSV canonical_category overrides resolvable stage3.category', async () => {
@@ -1108,12 +1108,12 @@ describe('Stage 6 — Publisher', () => {
             // Both CSV and stage3 have valid categories, but CSV should win
             const wpClient = mockWpClient({
                 createDraftId: 601,
-                findCategoryResult: { id: 78, slug: 'golf-cong-nghe' },
+                findCategoryResult: { id: 78, slug: 'general' },
             });
             const rankMath = mockRankMathService();
 
             const s3 = makeStage3();
-            s3.category = 'hoc-golf'; // resolvable, but CSV should take precedence
+            s3.category = 'general'; // resolvable, but CSV should take precedence
 
             const result = await runStage6({
                 queueId,
@@ -1125,13 +1125,13 @@ describe('Stage 6 — Publisher', () => {
                 rankMathService: rankMath,
                 queueRepo,
                 contentIndexRepo,
-                csvCanonicalCategory: 'golf-cong-nghe', // CSV overrides
+                csvCanonicalCategory: 'general', // CSV overrides
             });
 
             expect(result.ok).toBe(true);
             expect(result.output?.final_status).toBe('draft_wp');
             // Should use CSV category slug, not stage3 category
-            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('golf-cong-nghe');
+            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('general');
         });
 
         it('falls back to stage5 taxonomy category when CSV is absent', async () => {
@@ -1140,7 +1140,7 @@ describe('Stage 6 — Publisher', () => {
 
             const wpClient = mockWpClient({
                 createDraftId: 602,
-                findCategoryResult: { id: 79, slug: 'san-golf' },
+                findCategoryResult: { id: 79, slug: 'general' },
             });
             const rankMath = mockRankMathService();
 
@@ -1148,7 +1148,7 @@ describe('Stage 6 — Publisher', () => {
             s3.category = 'Totally Unknown Label'; // not resolvable
 
             const s5 = makeStage5Draft();
-            s5.taxonomy = { category: 'san-golf', tags: ['titleist'], dropped_tags: [] };
+            s5.taxonomy = { category: 'general', tags: ['guides'], dropped_tags: [] };
 
             const result = await runStage6({
                 queueId,
@@ -1165,7 +1165,7 @@ describe('Stage 6 — Publisher', () => {
 
             expect(result.ok).toBe(true);
             expect(result.output?.final_status).toBe('draft_wp');
-            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('san-golf');
+            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('general');
         });
 
         it('falls back to stage3 label resolution when CSV and stage5 both absent', async () => {
@@ -1174,15 +1174,15 @@ describe('Stage 6 — Publisher', () => {
 
             const wpClient = mockWpClient({
                 createDraftId: 603,
-                findCategoryResult: { id: 80, slug: 'golf-cong-nghe' },
+                findCategoryResult: { id: 80, slug: 'general' },
             });
             const rankMath = mockRankMathService();
 
             const s3 = makeStage3();
-            s3.category = 'Golf Công Nghệ'; // resolvable display name
+            s3.category = 'General'; // resolvable display name
 
             const s5 = makeStage5Draft();
-            s5.taxonomy = { category: '', tags: ['titleist'], dropped_tags: [] };
+            s5.taxonomy = { category: '', tags: ['guides'], dropped_tags: [] };
 
             const result = await runStage6({
                 queueId,
@@ -1199,7 +1199,7 @@ describe('Stage 6 — Publisher', () => {
 
             expect(result.ok).toBe(true);
             expect(result.output?.final_status).toBe('draft_wp');
-            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('golf-cong-nghe');
+            expect(wpClient.findCategoryBySlug).toHaveBeenCalledWith('general');
         });
 
         it('HOLD with category_not_canonical when nothing resolves', async () => {
@@ -1213,7 +1213,7 @@ describe('Stage 6 — Publisher', () => {
             s3.category = 'Totally Unresolvable Category';
 
             const s5 = makeStage5Draft();
-            s5.taxonomy = { category: 'also-not-canonical', tags: ['titleist'], dropped_tags: [] };
+            s5.taxonomy = { category: 'also-not-canonical', tags: ['guides'], dropped_tags: [] };
 
             const result = await runStage6({
                 queueId,
@@ -1239,12 +1239,12 @@ describe('Stage 6 — Publisher', () => {
 
             const wpClient = mockWpClient({
                 createDraftId: 604,
-                findCategoryResult: { id: 81, slug: 'hoc-golf' },
+                findCategoryResult: { id: 81, slug: 'general' },
             });
             const rankMath = mockRankMathService();
 
             const s3 = makeStage3();
-            s3.category = 'hoc-golf'; // resolvable
+            s3.category = 'general'; // resolvable
 
             const result = await runStage6({
                 queueId,
@@ -1269,12 +1269,12 @@ describe('Stage 6 — Publisher', () => {
 
             const wpClient = mockWpClient({
                 createDraftId: 605,
-                findCategoryResult: { id: 82, slug: 'hoc-golf' },
+                findCategoryResult: { id: 82, slug: 'general' },
             });
             const rankMath = mockRankMathService();
 
             const s3 = makeStage3();
-            s3.category = 'hoc-golf';
+            s3.category = 'general';
 
             const result = await runStage6({
                 queueId,
@@ -1691,7 +1691,7 @@ describe('Stage 6 — Publisher', () => {
                     robots: 'index,follow',
                     schema_type: 'BlogPosting',
                 },
-                taxonomy: { category: 'hoc-golf', tags: ['titleist'], dropped_tags: [] },
+                taxonomy: { category: 'general', tags: ['guides'], dropped_tags: [] },
                 gate_results: {},
                 reasons: [],
             };
@@ -2220,10 +2220,10 @@ describe('Stage 6 — Publisher', () => {
 
             // HTML content with multiple H2/H3 headings
             const htmlContent =
-                '<h2>Cách Chọn Gậy Golf</h2><p>Hướng dẫn chi tiết.</p>' +
+                '<h2>Cách Chọn Sản Phẩm</h2><p>Hướng dẫn chi tiết.</p>' +
                 '<h2>Loại Gậy Phổ Biến</h2><p>Iron, wood, putter.</p>' +
                 '<h3>Gậy Sắt (Iron)</h3><p>Đây là loại gậy phổ biến nhất.</p>' +
-                '<h2>Bảo Dưỡng Gậy Golf</h2><p>Vệ sinh sau mỗi vòng.</p>';
+                '<h2>Bảo Dưỡng Sản Phẩm</h2><p>Vệ sinh định kỳ.</p>';
 
             let contentUpdatePayload: any = null;
             const wpClient = mockWpClient({ createDraftId: 960 });

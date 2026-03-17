@@ -277,29 +277,29 @@ describe('generateWeeklyOpsReport', () => {
 
         insertRow(db, {
             status: 'published',
-            dropped_tags: JSON.stringify(['golf-tips', 'golf-tips', 'swing-basics']),
-            wp_tag_not_found: JSON.stringify(['seo-golf']),
+            dropped_tags: JSON.stringify(['niche-tips', 'niche-tips', 'swing-basics']),
+            wp_tag_not_found: JSON.stringify(['seo-niche']),
         });
         insertRow(db, {
             status: 'published',
-            dropped_tags: JSON.stringify(['golf-tips']),
-            wp_tag_not_found: JSON.stringify(['seo-golf', 'course-review']),
+            dropped_tags: JSON.stringify(['niche-tips']),
+            wp_tag_not_found: JSON.stringify(['seo-niche', 'course-review']),
         });
 
         const { report } = generateWeeklyOpsReport({ db, outputDir: TEST_OUTPUT_DIR });
         db.close();
 
-        // dropped_tags: golf-tips=3, swing-basics=1
+        // dropped_tags: niche-tips=3, swing-basics=1
         expect(report.taxonomy.dropped_tags_total).toBe(4);
         expect(report.taxonomy.dropped_tags.length).toBe(2);
-        expect(report.taxonomy.dropped_tags[0].slug).toBe('golf-tips');
+        expect(report.taxonomy.dropped_tags[0].slug).toBe('niche-tips');
         expect(report.taxonomy.dropped_tags[0].count).toBe(3);
         expect(report.taxonomy.dropped_tags[1].slug).toBe('swing-basics');
         expect(report.taxonomy.dropped_tags[1].count).toBe(1);
 
-        // wp_tag_not_found: seo-golf=2, course-review=1
+        // wp_tag_not_found: seo-niche=2, course-review=1
         expect(report.taxonomy.wp_tag_not_found_total).toBe(3);
-        expect(report.taxonomy.wp_tag_not_found[0].slug).toBe('seo-golf');
+        expect(report.taxonomy.wp_tag_not_found[0].slug).toBe('seo-niche');
         expect(report.taxonomy.wp_tag_not_found[0].count).toBe(2);
     });
 

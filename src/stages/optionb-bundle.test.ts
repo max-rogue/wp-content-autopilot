@@ -98,13 +98,13 @@ describe('Dropped-Tag Report — Generation', () => {
 
     it('aggregates dropped_tags counts from multiple rows', () => {
         insertQueueRow(db, 'row-1', {
-            dropped_tags: JSON.stringify(['golf-ai', 'smart-golf']),
+            dropped_tags: JSON.stringify(['niche-ai', 'smart-niche']),
         });
         insertQueueRow(db, 'row-2', {
-            dropped_tags: JSON.stringify(['golf-ai', 'new-tech']),
+            dropped_tags: JSON.stringify(['niche-ai', 'new-tech']),
         });
         insertQueueRow(db, 'row-3', {
-            dropped_tags: JSON.stringify(['golf-ai']),
+            dropped_tags: JSON.stringify(['niche-ai']),
         });
 
         const { report } = generateDroppedTagReport({
@@ -116,17 +116,17 @@ describe('Dropped-Tag Report — Generation', () => {
         expect(report.dropped_tags.total_unique).toBe(3);
         expect(report.dropped_tags.total_occurrences).toBe(5);
 
-        // Deterministic ordering: golf-ai (3) first, then alpha
-        expect(report.dropped_tags.top[0]).toEqual({ slug: 'golf-ai', count: 3 });
+        // Deterministic ordering: niche-ai (3) first, then alpha
+        expect(report.dropped_tags.top[0]).toEqual({ slug: 'niche-ai', count: 3 });
         expect(report.dropped_tags.top[1].count).toBe(1);
     });
 
     it('aggregates wp_tag_not_found counts', () => {
         insertQueueRow(db, 'row-1', {
-            wp_tag_not_found: JSON.stringify(['bridgestone', 'accra']),
+            wp_tag_not_found: JSON.stringify(['brand-beta', 'brand-gamma']),
         });
         insertQueueRow(db, 'row-2', {
-            wp_tag_not_found: JSON.stringify(['bridgestone']),
+            wp_tag_not_found: JSON.stringify(['brand-beta']),
         });
 
         const { report } = generateDroppedTagReport({
@@ -136,7 +136,7 @@ describe('Dropped-Tag Report — Generation', () => {
 
         expect(report.wp_tag_not_found.total_unique).toBe(2);
         expect(report.wp_tag_not_found.total_occurrences).toBe(3);
-        expect(report.wp_tag_not_found.top[0]).toEqual({ slug: 'bridgestone', count: 2 });
+        expect(report.wp_tag_not_found.top[0]).toEqual({ slug: 'brand-beta', count: 2 });
     });
 
     it('respects window_days parameter — excludes old rows', () => {
@@ -493,7 +493,7 @@ describe('Stage 6 Regression — Tag Handling', () => {
         cluster, content_type, status
       ) VALUES (
         'q-tag-test', 'test keyword', 'test-keyword', 'vi', 'idem-tag-test',
-        'gậy golf', 'BlogPost', 'qa'
+        'general', 'BlogPost', 'qa'
       )
     `).run();
     });
@@ -504,9 +504,9 @@ describe('Stage 6 Regression — Tag Handling', () => {
 
     it('Stage 6 does NOT create tags — only attaches existing ones', async () => {
         const wp = mockWpClient();
-        // Only 'titleist' exists in WP — 'new-tag' does not
-        wp.addExistingTag('titleist');
-        wp.addExistingCategory('gay-golf', 'Gậy Golf');
+        // Only 'brand-alpha' exists in WP — 'new-tag' does not
+        wp.addExistingTag('brand-alpha');
+        wp.addExistingCategory('general', 'General');
 
         // Track createTag calls
         const createTagCalls: string[] = [];
@@ -524,14 +524,14 @@ describe('Stage 6 Regression — Tag Handling', () => {
                 content_markdown: '# Test',
                 excerpt: 'Test excerpt',
                 suggested_slug: 'test-post',
-                category: 'Gậy Golf',
-                tags: ['titleist', 'new-tag'], // includes non-existing tag
+                category: 'General',
+                tags: ['brand-alpha', 'new-tag'], // includes non-existing tag
                 focus_keyword: 'test',
                 additional_keywords: [],
                 meta_title: 'Test',
                 meta_description: 'Test description for SEO',
                 faq: [],
-                featured_image: { prompt: 'golf', alt_text: 'golf image' },
+                featured_image: { prompt: 'test', alt_text: 'test image' },
                 citations: [],
                 publish_recommendation: 'DRAFT',
                 reasons: [],
@@ -539,7 +539,7 @@ describe('Stage 6 Regression — Tag Handling', () => {
             },
             stage4: {
                 schema_version: SCHEMA_VERSION,
-                featured_image: { prompt: 'golf', alt_text: 'golf image' },
+                featured_image: { prompt: 'test', alt_text: 'test image' },
                 inline_image: null,
                 media_mode: 'image_only',
                 images: { featured: null, hero: null },
@@ -557,8 +557,8 @@ describe('Stage 6 Regression — Tag Handling', () => {
                     schema_type: 'BlogPosting',
                 },
                 taxonomy: {
-                    category: 'gay-golf',
-                    tags: ['titleist', 'new-tag'], // Stage 5 filtered tags
+                    category: 'general',
+                    tags: ['brand-alpha', 'new-tag'], // Stage 5 filtered tags
                     dropped_tags: ['some-dropped'],
                 },
                 gate_results: {},
@@ -607,7 +607,7 @@ describe('Stage 6 Regression — Tag Handling', () => {
 
     it('Stage 6 records wp_tag_not_found when tag missing from WP', async () => {
         const wp = mockWpClient();
-        wp.addExistingCategory('gay-golf', 'Gậy Golf');
+        wp.addExistingCategory('general', 'General');
         // No tags exist in WP
 
         const input: Stage6Input = {
@@ -618,14 +618,14 @@ describe('Stage 6 Regression — Tag Handling', () => {
                 content_markdown: '# Test',
                 excerpt: 'Test excerpt',
                 suggested_slug: 'test-post-2',
-                category: 'Gậy Golf',
+                category: 'General',
                 tags: ['missing-tag'],
                 focus_keyword: 'test',
                 additional_keywords: [],
                 meta_title: 'Test',
                 meta_description: 'Test description for SEO',
                 faq: [],
-                featured_image: { prompt: 'golf', alt_text: 'golf image' },
+                featured_image: { prompt: 'test', alt_text: 'test image' },
                 citations: [],
                 publish_recommendation: 'DRAFT',
                 reasons: [],
@@ -633,7 +633,7 @@ describe('Stage 6 Regression — Tag Handling', () => {
             },
             stage4: {
                 schema_version: SCHEMA_VERSION,
-                featured_image: { prompt: 'golf', alt_text: 'golf image' },
+                featured_image: { prompt: 'test', alt_text: 'test image' },
                 inline_image: null,
                 media_mode: 'image_only',
                 images: { featured: null, hero: null },
@@ -651,7 +651,7 @@ describe('Stage 6 Regression — Tag Handling', () => {
                     schema_type: 'BlogPosting',
                 },
                 taxonomy: {
-                    category: 'gay-golf',
+                    category: 'general',
                     tags: ['missing-tag'],
                     dropped_tags: [],
                 },

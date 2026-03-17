@@ -2,6 +2,8 @@
 
 > **Goal**: Build a production-ready `data/keyword.csv` that feeds the WP Content Autopilot pipeline.
 > This guide walks you through SEO technical research and completing the CSV structure.
+>
+> **Note**: Examples in this guide use a **golf niche** for concreteness. Replace with your own niche's keywords, categories, and clusters.
 
 ---
 
@@ -36,7 +38,7 @@ the rest are for your content planning and editorial calendar.
 | **`cluster`** | Recommended | string | Topic cluster name (e.g. `golf fitting`, `shaft & specs`). Used for internal linking and CTA selection. |
 | **`class_hint`** | Recommended | `A` · `B` · `C` | Research depth class. Default: `B`. See [Class System](#class-system) below. |
 | **`local_modifier`** | Optional | slug | City/region slug (e.g. `tp-hcm`, `ha-noi`). Triggers local SEO gates. |
-| **`canonical_category`** | Optional | slug | WordPress category slug override (e.g. `gay-golf`, `hoc-golf`). |
+| **`canonical_category`** | Optional | slug | WordPress category slug override. Must match a slug in `taxonomy_config.yaml`. See [TAXONOMY_SETUP_GUIDE.md](TAXONOMY_SETUP_GUIDE.md). |
 | **`row_order`** | Optional | integer | Explicit processing order. If present, pipeline sorts by this before ingestion. |
 
 ### Planning Columns (editorial calendar)
@@ -62,9 +64,9 @@ The `class_hint` controls how deep the AI research stage digs:
 
 | Class | Label | Research Depth | Citation Requirement | Example Keywords |
 |-------|-------|---------------|---------------------|-----------------|
-| **A** | Definitional / Evergreen | Light (1–2 searches) | Optional | "golf là gì", "handicap golf là gì" |
-| **B** | Review / Comparison | Medium (2–4 searches) | Required (min 2 sources) | "gậy driver Titleist có tốt không", "shaft graphite hay steel" |
-| **C** | Price / Address / Specs | Deep (verify every claim) | Mandatory per claim | "sân golf TP HCM", "Long Thành Golf bảng giá" |
+| **A** | Definitional / Evergreen | Light (1–2 searches) | Optional | "what is golf fitting", "VO2 max là gì" |
+| **B** | Review / Comparison | Medium (2–4 searches) | Required (min 2 sources) | "best golf drivers 2025", "iPhone 16 review" |
+| **C** | Price / Address / Specs | Deep (verify every claim) | Mandatory per claim | "golf courses near me", "rental apartments downtown" |
 
 > [!IMPORTANT]
 > Class **C** keywords with `local_modifier` require verified local data. The pipeline's G3 gate will force articles to DRAFT + noindex if local data cannot be verified.
@@ -135,11 +137,22 @@ Set `pass_risk` for each keyword:
 
 ## Example Rows
 
+### Golf Niche
+
 ```csv
-row_order,keyword,content_type,blogpost_subtype,review_subtype,cluster,funnel_stage,local_modifier,class_hint,priority,notes,phase,planned_month,planned_week,canonical_category,suggested_tags,cannibalization_group,local_data_required,pass_risk
-1,what is golf fitting,Glossary,,,golf fitting,TOFU,,A,1,definition; internal anchor,1,1,W01,golf-fitting,"buying-guide,glossary",golf_fitting,NO,LOW
-2,best golf drivers 2025,Review,,BestOf,golf clubs,MOFU,,B,2,ranking; update yearly,3,3,W10,golf-clubs,"buying-guide,review",golf_clubs,NO,LOW
-3,golf courses near me,BlogPost,Guide,,golf courses,MOFU,new-york,C,1,local directory,5,5,W20,golf-courses,"buying-guide,review",golf_courses_ny,YES,MED
+row_order,keyword,content_type,blogpost_subtype,review_subtype,cluster,class_hint,funnel_stage,canonical_category,suggested_tags
+1,what is golf fitting,Glossary,,,golf fitting,A,TOFU,hoc-golf,"glossary,beginner"
+2,best golf drivers 2025,Review,,BestOf,golf clubs,B,MOFU,gay-golf,"buying-guide,review"
+3,golf courses near me,BlogPost,Guide,,golf courses,C,BOFU,san-golf,"review,local"
+```
+
+### Tech Review Niche
+
+```csv
+row_order,keyword,content_type,blogpost_subtype,review_subtype,cluster,class_hint,funnel_stage,canonical_category,suggested_tags
+1,what is ray tracing,Glossary,,,graphics,A,TOFU,guides,"glossary,beginner"
+2,best laptops 2025,Review,,BestOf,laptops,B,MOFU,reviews,"buying-guide,review"
+3,MacBook Pro M4 review,Review,,SingleReview,laptops,B,MOFU,reviews,"apple,review"
 ```
 
 ---

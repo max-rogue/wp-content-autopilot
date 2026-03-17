@@ -158,18 +158,18 @@ describe('RankMath Discovery', () => {
         const service = new RankMathService(config, wpClient);
 
         const meta = service.buildMetaObject({
-            focus_keyword: 'golf swing',
-            meta_title: 'Golf Swing | MySite',
-            meta_description: 'Learn golf swing',
-            canonical: 'http://localhost/golf-swing',
+            focus_keyword: 'product review',
+            meta_title: 'Product Review | MySite',
+            meta_description: 'Learn product review',
+            canonical: 'http://localhost/product-review',
             robots: 'index,follow',
         });
 
         // Keys should match discovered names
-        expect(meta['my_custom_rm_title']).toBe('Golf Swing | MySite');
-        expect(meta['my_custom_rm_desc']).toBe('Learn golf swing');
-        expect(meta['my_custom_rm_kw']).toBe('golf swing');
-        expect(meta['my_custom_canonical']).toBe('http://localhost/golf-swing');
+        expect(meta['my_custom_rm_title']).toBe('Product Review | MySite');
+        expect(meta['my_custom_rm_desc']).toBe('Learn product review');
+        expect(meta['my_custom_rm_kw']).toBe('product review');
+        expect(meta['my_custom_canonical']).toBe('http://localhost/product-review');
         expect(meta['my_custom_robots']).toBe('index,follow');
 
         // Should NOT contain hardcoded key names

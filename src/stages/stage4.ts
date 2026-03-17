@@ -24,6 +24,7 @@ import type { Stage3Output, Stage4Output, ImageAsset } from '../types';
 import type { PublishQueueRepo } from '../db/repositories';
 import type { WriterService } from '../services/writer';
 import { logger } from '../logger';
+import { loadTaxonomyConfig } from '../config/taxonomy-config-loader';
 
 // ─── Default Retry Constants ────────────────────────────────────
 const DEFAULT_MAX_ATTEMPTS = 8;
@@ -211,7 +212,7 @@ function buildRolePrompt(
       `Wide cinematic hero banner image (image_only, NO video, NO animation, NO GIF):`,
       `${basePrompt}.`,
       `Title: "${title}". Keyword: ${keyword}.`,
-      `Aspect ratio 16:9, vibrant golf photography, shallow depth of field,`,
+      `Aspect ratio 16:9, ${loadTaxonomyConfig().imageStyleHint}, shallow depth of field,`,
       `soft natural lighting, editorial quality. Static image only.`,
     ].join(' ');
   }
@@ -241,7 +242,7 @@ export async function runStage4(input: Stage4Input): Promise<Stage4Result> {
         stage3.title
       );
       featuredImagePlan = {
-        prompt: generated.prompt || featuredImagePlan?.prompt || `Golf illustration for ${stage3.focus_keyword}`,
+        prompt: generated.prompt || featuredImagePlan?.prompt || `Illustration for ${stage3.focus_keyword}`,
         alt_text: generated.alt_text || featuredImagePlan?.alt_text || stage3.focus_keyword,
       };
     } catch (err) {
@@ -268,7 +269,7 @@ export async function runStage4(input: Stage4Input): Promise<Stage4Result> {
 
   if (writerService) {
     const basePrompt =
-      featuredImagePlan?.prompt || `Golf illustration for ${stage3.focus_keyword}`;
+      featuredImagePlan?.prompt || `Illustration for ${stage3.focus_keyword}`;
     const baseAltText =
       featuredImagePlan?.alt_text || stage3.focus_keyword;
 
@@ -355,7 +356,7 @@ export async function runStage4(input: Stage4Input): Promise<Stage4Result> {
   const output: Stage4Output = {
     schema_version: SCHEMA_VERSION,
     featured_image: {
-      prompt: featuredImagePlan?.prompt || `Golf illustration for ${stage3.focus_keyword}`,
+      prompt: featuredImagePlan?.prompt || `Illustration for ${stage3.focus_keyword}`,
       alt_text: featuredImagePlan?.alt_text || stage3.focus_keyword,
     },
     inline_image: null,

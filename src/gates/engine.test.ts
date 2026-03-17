@@ -32,24 +32,24 @@ function createTestDb(): Database.Database {
 function makeStage3(overrides?: Partial<Stage3Output>): Stage3Output {
     return {
         schema_version: SCHEMA_VERSION,
-        title: 'Cách Đánh Golf Chuẩn',
-        content_markdown: '# Cách Đánh Golf\n\n' + Array(310).fill('Nội dung bài viết').join(' '),
-        excerpt: 'Hướng dẫn đánh golf chuẩn.',
-        suggested_slug: 'cach-danh-golf-chuan',
-        category: 'hoc-golf',
-        tags: ['golf', 'swing'],
-        focus_keyword: 'cách đánh golf',
-        additional_keywords: ['swing golf', 'kỹ thuật đánh golf', 'học golf cơ bản'],
-        meta_title: 'Cách Đánh Golf Chuẩn Kỹ Thuật Cho Người Mới | MySite',
+        title: 'Cách Bắt Đầu Đúng Chuẩn',
+        content_markdown: '# Cách Bắt Đầu\n\n' + Array(310).fill('Nội dung bài viết').join(' '),
+        excerpt: 'Hướng dẫn bắt đầu đúng chuẩn.',
+        suggested_slug: 'cach-bat-dau-dung-chuan',
+        category: 'guides',
+        tags: ['beginner', 'swing'],
+        focus_keyword: 'cách bắt đầu',
+        additional_keywords: ['swing cơ bản', 'kỹ thuật bắt đầu', 'học cơ bản'],
+        meta_title: 'Cách Bắt Đầu Đúng Chuẩn Kỹ Thuật Cho Người Mới | MySite',
         meta_description:
-            'Hướng dẫn chi tiết cách đánh golf chuẩn kỹ thuật dành cho golfer Việt Nam. Tìm hiểu kỹ thuật swing, grip, stance và tips từ chuyên gia golf hàng đầu.',
+            'Hướng dẫn chi tiết cách bắt đầu đúng chuẩn kỹ thuật dành cho người Việt Nam. Tìm hiểu kỹ thuật swing, grip, stance và tips từ chuyên gia hàng đầu.',
         faq: [
-            { question: 'Cách đánh golf là gì?', answer: 'Kỹ thuật cơ bản.' },
+            { question: 'Cách bắt đầu là gì?', answer: 'Kỹ thuật cơ bản.' },
             { question: 'Tại sao cần học?', answer: 'Để cải thiện.' },
             { question: 'Bắt đầu như thế nào?', answer: 'Từ grip.' },
         ],
-        featured_image: { prompt: 'Golf swing illustration', alt_text: 'cách đánh golf' },
-        citations: [{ claim: 'Golf is popular', source_url: 'https://example.com' }],
+        featured_image: { prompt: 'Topic illustration', alt_text: 'cách bắt đầu' },
+        citations: [{ claim: 'This topic is popular', source_url: 'https://example.com' }],
         publish_recommendation: 'PUBLISH',
         reasons: [],
         missing_data_fields: [],
@@ -60,7 +60,7 @@ function makeStage3(overrides?: Partial<Stage3Output>): Stage3Output {
 function makeStage4(overrides?: Partial<Stage4Output>): Stage4Output {
     return {
         schema_version: SCHEMA_VERSION,
-        featured_image: { prompt: 'Golf illustration', alt_text: 'cách đánh golf' },
+        featured_image: { prompt: 'Topic illustration', alt_text: 'cách bắt đầu' },
         inline_image: null,
         media_mode: 'image_only',
         images: { featured: null, hero: null },
@@ -84,8 +84,8 @@ describe('Gate Engine', () => {
     function makeContext(overrides?: Partial<GateContext>): GateContext {
         return {
             queueId: 'test-q-1',
-            keyword: 'cách đánh golf',
-            normalizedKeyword: 'cách đánh golf',
+            keyword: 'cách bắt đầu',
+            normalizedKeyword: 'cách bắt đầu',
             contentType: 'BlogPost',
             stage3: makeStage3(),
             stage4: makeStage4(),
@@ -130,10 +130,10 @@ describe('Gate Engine', () => {
         contentIndexRepo.upsert({
             wp_post_id: 42,
             title: 'Existing',
-            focus_keyword: 'cách đánh golf',
-            slug: 'cach-danh-golf',
-            url: 'https://example.com/blog/cach-danh-golf',
-            category: 'hoc-golf',
+            focus_keyword: 'cách bắt đầu',
+            slug: 'cach-bat-dau',
+            url: 'https://example.com/blog/cach-bat-dau',
+            category: 'guides',
             tags: '[]',
             published_at: new Date().toISOString(),
             content_hash: 'abc',
@@ -201,7 +201,7 @@ describe('Gate Engine', () => {
         localDbRepo.insert({
             entity_id: 'e1',
             entity_type: 'venue',
-            name: 'Sân golf Hà Nội',
+            name: 'Cửa hàng Hà Nội',
             city_province: 'Hà Nội',
             address: '123 Main St',
             verified_source_url: 'https://example.com',
@@ -282,7 +282,7 @@ describe('Gate Engine', () => {
     it('No HOLD + any DRAFT → recommendation DRAFT', () => {
         const ctx = makeContext({
             stage3: makeStage3({
-                content_markdown: 'As an AI language model, here is golf content.',
+                content_markdown: 'As an AI language model, here is generic content.',
             }),
         });
         const result = runGates(ctx);
@@ -292,12 +292,12 @@ describe('Gate Engine', () => {
     // ── Keyword Normalization ────────────────────────────────────
 
     it('normalizeKeyword: lowercase + trim + collapse spaces', () => {
-        expect(normalizeKeyword('  Cách ĐÁNH Golf  ')).toBe('cách đánh golf');
-        expect(normalizeKeyword('Cách  đánh  golf')).toBe('cách đánh golf');
+        expect(normalizeKeyword('  Cách BẮT Đầu  ')).toBe('cách bắt đầu');
+        expect(normalizeKeyword('Cách  bắt  đầu')).toBe('cách bắt đầu');
     });
 
     it('normalizeKeyword: "tại" → "ở", "chuẩn" → "đúng"', () => {
-        expect(normalizeKeyword('golf tại Hà Nội')).toBe('golf ở hà nội');
+        expect(normalizeKeyword('mua sắm tại Hà Nội')).toBe('mua sắm ở hà nội');
         expect(normalizeKeyword('cách đánh chuẩn')).toBe('cách đánh đúng');
     });
 });

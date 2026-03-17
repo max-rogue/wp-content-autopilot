@@ -38,30 +38,30 @@ function createTestDb(): Database.Database {
 
 const SAMPLE_CSV_WITH_ROW_ORDER = [
     'row_order,keyword,content_type,canonical_category,cluster',
-    '1,quản lý chi tiêu golf,BlogPost,chi-phi-va-van-hoa,chi phí golf',
-    '2,Trackman là gì,Glossary,golf-cong-nghe,golf công nghệ',
-    '3,golf fitting là gì,Glossary,golf-fitting,golf fitting',
-    '4,cách tính handicap golf,BlogPost,hoc-golf,handicap',
-    '5,grip golf là gì,BlogPost,hoc-golf,học golf',
+    '1,quản lý chi tiêu cá nhân,BlogPost,chi-phi-va-van-hoa,chi phí cá nhân',
+    '2,Trackman là gì,Glossary,cong-nghe,công nghệ',
+    '3,kỹ thuật fitting là gì,Glossary,ky-thuat-fitting,kỹ thuật fitting',
+    '4,cách tính kỹ năng cơ bản,BlogPost,hoc-co-ban,handicap',
+    '5,kỹ thuật grip là gì,BlogPost,hoc-co-ban,học cơ bản',
 ].join('\n');
 
 const SAMPLE_CSV_NO_ROW_ORDER = [
     'keyword,content_type,canonical_category,cluster',
-    'quản lý chi tiêu golf,BlogPost,chi-phi-va-van-hoa,chi phí golf',
-    'Trackman là gì,Glossary,golf-cong-nghe,golf công nghệ',
-    'golf fitting là gì,Glossary,golf-fitting,golf fitting',
+    'quản lý chi tiêu cá nhân,BlogPost,chi-phi-va-van-hoa,chi phí cá nhân',
+    'Trackman là gì,Glossary,cong-nghe,công nghệ',
+    'kỹ thuật fitting là gì,Glossary,ky-thuat-fitting,kỹ thuật fitting',
 ].join('\n');
 
 const SAMPLE_CSV_MINIMAL = [
     'keyword',
-    'quản lý chi tiêu golf',
+    'quản lý chi tiêu cá nhân',
     'Trackman là gì',
 ].join('\n');
 
 const SAMPLE_CSV_WITH_QUOTES = [
     'row_order,keyword,content_type,canonical_category,tags',
-    '1,quản lý chi tiêu golf,BlogPost,chi-phi-va-van-hoa,"tag1,tag2,tag3"',
-    '2,Trackman là gì,Glossary,golf-cong-nghe,"tag4,tag5"',
+    '1,quản lý chi tiêu cá nhân,BlogPost,chi-phi-va-van-hoa,"tag1,tag2,tag3"',
+    '2,Trackman là gì,Glossary,cong-nghe,"tag4,tag5"',
 ].join('\n');
 
 // ─── Helper: write CSV to temp file ─────────────────────────────
@@ -88,7 +88,7 @@ describe('parseIngestCsv', () => {
     it('parses CSV with all columns', () => {
         const rows = parseIngestCsv(SAMPLE_CSV_WITH_ROW_ORDER);
         expect(rows).toHaveLength(5);
-        expect(rows[0].keyword).toBe('quản lý chi tiêu golf');
+        expect(rows[0].keyword).toBe('quản lý chi tiêu cá nhân');
         expect(rows[0].row_order).toBe('1');
         expect(rows[0].content_type).toBe('BlogPost');
         expect(rows[0].canonical_category).toBe('chi-phi-va-van-hoa');
@@ -97,14 +97,14 @@ describe('parseIngestCsv', () => {
     it('parses CSV without row_order', () => {
         const rows = parseIngestCsv(SAMPLE_CSV_NO_ROW_ORDER);
         expect(rows).toHaveLength(3);
-        expect(rows[0].keyword).toBe('quản lý chi tiêu golf');
+        expect(rows[0].keyword).toBe('quản lý chi tiêu cá nhân');
         expect(rows[0].row_order).toBeUndefined();
     });
 
     it('parses minimal CSV with only keyword column', () => {
         const rows = parseIngestCsv(SAMPLE_CSV_MINIMAL);
         expect(rows).toHaveLength(2);
-        expect(rows[0].keyword).toBe('quản lý chi tiêu golf');
+        expect(rows[0].keyword).toBe('quản lý chi tiêu cá nhân');
     });
 
     it('handles quoted fields with internal commas', () => {
@@ -138,14 +138,14 @@ describe('parseIngestCsv', () => {
 
 describe('computeIdempotencyKey', () => {
     it('uses row_order + keyword when row_order present', () => {
-        const key1 = computeIdempotencyKey({ keyword: 'golf', row_order: '1' });
-        const key2 = computeIdempotencyKey({ keyword: 'golf', row_order: '2' });
+        const key1 = computeIdempotencyKey({ keyword: 'niche', row_order: '1' });
+        const key2 = computeIdempotencyKey({ keyword: 'niche', row_order: '2' });
         expect(key1).not.toBe(key2);
     });
 
     it('uses keyword only when no row_order', () => {
-        const key1 = computeIdempotencyKey({ keyword: 'golf' });
-        const key2 = computeIdempotencyKey({ keyword: 'golf' });
+        const key1 = computeIdempotencyKey({ keyword: 'niche' });
+        const key2 = computeIdempotencyKey({ keyword: 'niche' });
         expect(key1).toBe(key2);
     });
 
@@ -158,8 +158,8 @@ describe('computeIdempotencyKey', () => {
     });
 
     it('different keywords produce different keys', () => {
-        const k1 = computeIdempotencyKey({ keyword: 'golf a' });
-        const k2 = computeIdempotencyKey({ keyword: 'golf b' });
+        const k1 = computeIdempotencyKey({ keyword: 'niche a' });
+        const k2 = computeIdempotencyKey({ keyword: 'niche b' });
         expect(k1).not.toBe(k2);
     });
 });
@@ -227,7 +227,7 @@ describe('ingestKeywords', () => {
         expect(planned).toHaveLength(2);
 
         const keywords = planned.map(r => r.picked_keyword).sort();
-        expect(keywords).toContain('quản lý chi tiêu golf');
+        expect(keywords).toContain('quản lý chi tiêu cá nhân');
         expect(keywords).toContain('Trackman là gì');
     });
 
@@ -254,13 +254,13 @@ describe('ingestKeywords', () => {
         const repo = new PublishQueueRepo(db);
         const planned = repo.findByStatus('planned');
 
-        // Find the golf-cong-nghe row
+        // Find the cong-nghe row
         const trackman = planned.find(r => r.picked_keyword === 'Trackman là gì');
         expect(trackman).toBeDefined();
-        expect(trackman!.canonical_category).toBe('golf-cong-nghe');
+        expect(trackman!.canonical_category).toBe('cong-nghe');
 
         // Find the chi-phi-va-van-hoa row
-        const chiphi = planned.find(r => r.picked_keyword === 'quản lý chi tiêu golf');
+        const chiphi = planned.find(r => r.picked_keyword === 'quản lý chi tiêu cá nhân');
         expect(chiphi).toBeDefined();
         expect(chiphi!.canonical_category).toBe('chi-phi-va-van-hoa');
     });
@@ -355,7 +355,7 @@ describe('ingestKeywords', () => {
         const repo = new PublishQueueRepo(db);
         const planned = repo.findByStatus('planned');
         const trackman = planned.find(r => r.picked_keyword === 'Trackman là gì');
-        expect(trackman!.cluster).toBe('golf công nghệ');
+        expect(trackman!.cluster).toBe('công nghệ');
     });
 
     it('language defaults to config default (en)', () => {

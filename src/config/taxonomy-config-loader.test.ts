@@ -37,7 +37,7 @@ describe('Taxonomy Config Loader', () => {
     it('loads taxonomy_config.yaml from default path', () => {
         const config = loadTaxonomyConfig();
 
-        expect(config.version).toBe('2.1');
+        expect(config.version).toBe('2.3');
         expect(config.maxTagsPerPost).toBe(8);
         expect(config.tagWhitelist.size).toBeGreaterThan(0);
         expect(config.flatWhitelist.size).toBeGreaterThan(0);
@@ -47,9 +47,9 @@ describe('Taxonomy Config Loader', () => {
         const config = loadTaxonomyConfig();
         const brands = config.tagWhitelist.get('brand');
 
+        // Default config has empty brand list
         expect(brands).toBeDefined();
-        expect(brands!.has('example-brand-1')).toBe(true);
-        expect(brands!.has('example-brand-2')).toBe(true);
+        expect(brands!.size).toBe(0);
     });
 
     it('whitelist contains expected category slugs', () => {
@@ -93,6 +93,16 @@ describe('Taxonomy Config Loader', () => {
         expect(Array.isArray(config.tagArchivePolicy.graduated)).toBe(true);
     });
 
+    it('newsDefaultCluster defaults from YAML', () => {
+        const config = loadTaxonomyConfig();
+        expect(config.newsDefaultCluster).toBe('news');
+    });
+
+    it('imageStyleHint defaults from YAML', () => {
+        const config = loadTaxonomyConfig();
+        expect(config.imageStyleHint).toBe('vibrant professional photography');
+    });
+
     it('parses approved_additions entries with slug+group', () => {
         const tmpDir = os.tmpdir();
         const tmpPath = path.join(tmpDir, `test-taxonomy-approved-${Date.now()}.yaml`);
@@ -126,7 +136,7 @@ max_tags_per_post: 8
     it('getTagGroup returns correct group', () => {
         const config = loadTaxonomyConfig();
 
-        expect(getTagGroup('example-brand-1', config)).toBe('brand');
+        // Use tags from default config: 'guides' is in category, 'beginner' is in topic
         expect(getTagGroup('guides', config)).toBe('category');
         expect(getTagGroup('beginner', config)).toBe('topic');
     });
@@ -246,7 +256,7 @@ describe('TEST-TAX-001: Taxonomy config resolution in dist mode', () => {
         process.env.TAXONOMY_CONFIG_PATH = actualPath;
 
         const config = loadTaxonomyConfig();
-        expect(config.version).toBe('2.1');
+        expect(config.version).toBe('2.3');
         expect(config.maxTagsPerPost).toBe(8);
         expect(config.tagWhitelist.size).toBeGreaterThan(0);
     });

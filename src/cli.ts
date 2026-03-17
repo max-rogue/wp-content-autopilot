@@ -30,9 +30,10 @@ import {
 } from './config/taxonomy-config-loader';
 import {
     CANONICAL_CATEGORIES,
+    getCanonicalCategories,
     TAG_WHITELIST,
     CLUSTER_TO_CATEGORY,
-    DEFAULT_FALLBACK_CATEGORY,
+    getDefaultFallbackCategory,
 } from './services/taxonomy';
 
 async function main(): Promise<void> {
@@ -153,7 +154,7 @@ async function runSyncTaxonomies(config: ReturnType<typeof loadConfig>): Promise
     }
 
     // Print plan: categories
-    console.log('▶ CANONICAL CATEGORIES (10):');
+    console.log(`▶ CANONICAL CATEGORIES (${getCanonicalCategories().length}):`);
     for (const cat of CANONICAL_CATEGORIES) {
         console.log(`  • ${cat.slug}  →  "${cat.name}"`);
     }
@@ -182,7 +183,7 @@ async function runSyncTaxonomies(config: ReturnType<typeof loadConfig>): Promise
     for (const [cluster, cat] of uniqueEntries) {
         console.log(`  "${cluster}" → ${cat}`);
     }
-    console.log(`  [unmapped] → ${DEFAULT_FALLBACK_CATEGORY} (fallback)`);
+    console.log(`  [unmapped] → ${getDefaultFallbackCategory()} (fallback)`);
     console.log();
 
     // City tags — always skipped

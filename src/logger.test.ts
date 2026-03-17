@@ -93,7 +93,7 @@ describe('Logger Secret Redaction', () => {
     });
 
     it('does not alter non-sensitive content', () => {
-        const input = 'Stage 1: processing keyword "golf swing" for queue_id abc123';
+        const input = 'Stage 1: processing keyword "product review" for queue_id abc123';
         const result = redact(input);
         expect(result).toBe(input);
     });

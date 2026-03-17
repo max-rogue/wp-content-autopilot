@@ -27,28 +27,32 @@ You provide keywords. The pipeline:
 - **WordPress site** with [Application Passwords](https://wordpress.org/documentation/article/application-passwords/) enabled
 - **AI API key** — [Google Gemini](https://aistudio.google.com/apikey) (recommended) or OpenAI
 
-### Setup (3 commands)
+### Setup
 
 ```bash
-# 1. Initialize project
-npx wp-content-autopilot init
+# 1. Clone the repo
+git clone https://github.com/max-rogue/wp-content-autopilot.git
+cd wp-content-autopilot
 
-# 2. Configure (edit these files)
-#    .env          → API keys + WordPress URL
-#    prompts/      → Customize for your niche
-#    data/keyword.csv → Your target keywords
+# 2. Install dependencies
+npm install
 
-# 3. Start the pipeline
-npx wp-content-autopilot start
+# 3. Configure — copy and edit these files:
+cp .env.example .env              # → Add your API keys + WordPress URL
+cp prompts/template_prompts.md prompts/my_prompts.md  # → Customize for your niche
+
+# 4. Edit taxonomy config for your niche (categories, tags, clusters)
+#    src/config/taxonomy_config.yaml
+
+# 5. Add your keywords
+#    data/keyword.csv
+
+# 6. Start the pipeline
+npm run dev
 ```
 
-### Or install globally
-
-```bash
-npm install -g wp-content-autopilot
-wcap init
-wcap start
-```
+> [!TIP]
+> See [Adapting for Your Niche](#adapting-for-your-niche) below for detailed setup of each config file.
 
 ## Configuration
 
@@ -162,22 +166,39 @@ The root `Dockerfile` and `docker-compose.yml` are the canonical Docker configs.
 
 ## Adapting for Your Niche
 
-The pipeline is **niche-agnostic**. To adapt:
+The pipeline is **niche-agnostic**. After cloning, follow these 4 steps to configure for your niche:
 
-| File | What to Change |
-|------|---------------|
-| `prompts/my_prompts.md` | Your writing style, tone, language |
-| `data/keyword.csv` | Your target keywords |
-| `.env` | Your WordPress URL + API keys |
-| `taxonomy_config.yaml` | Your categories and tags (optional) |
+### Step 1 — `.env` (API Keys & WordPress)
+
+Set your WordPress URL, credentials, and AI API keys. See [.env.example](.env.example).
+
+### Step 2 — `src/config/taxonomy_config.yaml` (Categories & Tags)
+
+This is the **most important config file**. Define your:
+- **Categories** — WordPress categories for your niche
+- **Cluster → Category mapping** — how keyword clusters map to categories
+- **Tag whitelist** — which tags the pipeline is allowed to create
+- **News keywords** — filter RSS feeds for your niche (if using news)
+
+📖 **Full guide**: [docs/TAXONOMY_SETUP_GUIDE.md](docs/TAXONOMY_SETUP_GUIDE.md) — includes complete Golf and Tech niche examples.
+
+### Step 3 — `prompts/my_prompts.md` (AI Writing Style)
+
+Copy `prompts/template_prompts.md` and customize the writing voice, language, and citation requirements for your niche. See [docs/PROMPT_GUIDE.md](docs/PROMPT_GUIDE.md).
+
+### Step 4 — `data/keyword.csv` (Your Keywords)
+
+Add your target keywords with clusters, content types, and class hints. See [docs/KEYWORD_SETUP_GUIDE.md](docs/KEYWORD_SETUP_GUIDE.md).
 
 ### Example Niches
 
-- **Real Estate** — prompts for property guides, market analysis
-- **Travel** — prompts for destination guides, hotel reviews
-- **Tech** — prompts for product comparisons, how-to guides
-- **Health** — prompts for wellness articles, nutrition guides
-- **E-commerce** — prompts for product descriptions, buying guides
+| Niche | Categories | News Keywords | Image Style |
+|-------|-----------|---------------|-------------|
+| **Golf** | Học Golf, Gậy Golf, Sân Golf | golf, pga, masters | golf course photography |
+| **Tech Reviews** | Reviews, Guides, Comparisons | smartphone, laptop, GPU | minimalist product photography |
+| **Real Estate** | For Sale, Rentals, Market Analysis | real estate, housing, mortgage | architectural photography |
+| **Travel** | Destinations, Hotels, Food | travel, tourism, airline | cinematic landscape photography |
+| **Health** | Nutrition, Fitness, Wellness | health, nutrition, FDA | clean wellness photography |
 
 ## Development
 

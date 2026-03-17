@@ -40,7 +40,7 @@ function mockRssFeed(items: Array<{
     return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
   <channel>
-    <title>Test Golf Feed</title>
+    <title>Test Niche Feed</title>
     <link>https://example.com</link>
     <description>Test feed</description>
     ${itemXml}
@@ -70,8 +70,8 @@ describe('news-ingest', () => {
 
         it('should not collide with CSV idempotency keys (different domain)', () => {
             // CSV keys use raw keyword hash; news keys use "news|" prefix
-            const newsKey = computeNewsIdempotencyKey('golf tips');
-            // The "news|" prefix ensures it won't match a raw "golf tips" hash
+            const newsKey = computeNewsIdempotencyKey('niche tips');
+            // The "news|" prefix ensures it won't match a raw "niche tips" hash
             expect(newsKey.length).toBe(64);
         });
     });
@@ -135,13 +135,13 @@ describe('news-ingest', () => {
             const { v4: uuid } = await import('uuid');
 
             // Pre-insert a row with specific idempotency key
-            const testUrl = 'https://example.com/golf-news-article';
+            const testUrl = 'https://example.com/niche-news-article';
             const idempKey = computeNewsIdempotencyKey(testUrl);
 
             queueRepo.insert({
                 id: uuid(),
-                picked_keyword: 'Test Golf Article',
-                normalized_keyword: 'test golf article',
+                picked_keyword: 'Test News Article',
+                normalized_keyword: 'test news article',
                 language: 'vi',
                 idempotency_key: idempKey,
                 cluster: 'news',
@@ -179,10 +179,10 @@ describe('news-ingest', () => {
             const id = uuid();
             queueRepo.insert({
                 id,
-                picked_keyword: 'PGA Tour News',
-                normalized_keyword: 'pga tour news',
+                picked_keyword: 'Industry Weekly News',
+                normalized_keyword: 'industry weekly news',
                 language: 'vi',
-                idempotency_key: computeNewsIdempotencyKey('https://pga.com/article'),
+                idempotency_key: computeNewsIdempotencyKey('https://industry-news.com/article'),
                 cluster: 'news',
                 content_type: 'BlogPost',
                 class_hint: 'B',
@@ -200,15 +200,15 @@ describe('news-ingest', () => {
                 dropped_tags: null,
                 wp_tag_not_found: null,
                 canonical_category: null,
-                news_source_url: 'https://pga.com/article',
-                news_source_name: 'PGA Tour',
+                news_source_url: 'https://industry-news.com/article',
+                news_source_name: 'Industry Weekly',
             });
 
             const row = queueRepo.findById(id);
             expect(row).toBeDefined();
             expect(row!.content_type).toBe('BlogPost');
-            expect(row!.news_source_url).toBe('https://pga.com/article');
-            expect(row!.news_source_name).toBe('PGA Tour');
+            expect(row!.news_source_url).toBe('https://industry-news.com/article');
+            expect(row!.news_source_name).toBe('Industry Weekly');
             expect(row!.cluster).toBe('news');
             expect(row!.status).toBe('planned');
         });

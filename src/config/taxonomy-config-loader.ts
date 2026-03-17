@@ -200,6 +200,11 @@ export const TAG_GROUP_PRIORITY: readonly TagGroupName[] = [
     'format',
 ];
 
+export interface CategoryEntry {
+    slug: string;
+    name: string;
+}
+
 export interface TaxonomyConfig {
     version: string;
     tagWhitelist: Map<TagGroupName, Set<string>>;
@@ -212,6 +217,20 @@ export interface TaxonomyConfig {
     };
     /** Approved additions: tags to be created via taxonomy_sync_tool. */
     approvedAdditions: ApprovedAddition[];
+    /** Canonical categories loaded from YAML. */
+    categories: CategoryEntry[];
+    /** Category slug set for quick lookup. */
+    categorySlugs: Set<string>;
+    /** Cluster name → category slug mapping. */
+    clusterToCategory: Record<string, string>;
+    /** Default category slug when cluster is unmapped. */
+    defaultFallbackCategory: string;
+    /** Keywords for filtering news RSS articles. Empty = accept all. */
+    newsRelevanceKeywords: string[];
+    /** Cluster name assigned to news articles in the publish queue. */
+    newsDefaultCluster: string;
+    /** Style descriptor for hero image prompts (e.g. "vibrant food photography"). */
+    imageStyleHint: string;
 }
 
 export interface ApprovedAddition {
@@ -353,6 +372,80 @@ export function loadTaxonomyConfig(configPath?: string): TaxonomyConfig {
             .filter((a) => a.slug.length > 0 && a.group.length > 0);
     }
 
+    // ── Parse categories ──
+    const rawCategories = parsed['categories'];
+    let categories: CategoryEntry[] = [{ slug: 'general', name: 'General' }];
+    let categoriesFellBack = true;
+    if (Array.isArray(rawCategories)) {
+        const parsed_cats = rawCategories
+            .filter((item: unknown) => typeof item === 'object' && item !== null)
+            .map((item: unknown) => {
+                const obj = item as Record<string, string>;
+                return {
+                    slug: (obj.slug || '').trim().toLowerCase(),
+                    name: (obj.name || '').trim(),
+                };
+            })
+            .filter((c) => c.slug.length > 0 && c.name.length > 0);
+        if (parsed_cats.length > 0) {
+            categories = parsed_cats;
+            categoriesFellBack = false;
+        }
+    }
+    if (categoriesFellBack) {
+        logger.warn('taxonomy_config: "categories" missing or empty — falling back to [{slug:"general",name:"General"}]. Check your taxonomy_config.yaml.');
+    }
+    const categorySlugs = new Set(categories.map(c => c.slug));
+
+    // ── Parse cluster_to_category ──
+    const rawClusterMap = parsed['cluster_to_category'];
+    const clusterToCategory: Record<string, string> = {};
+    if (rawClusterMap && typeof rawClusterMap === 'object' && !Array.isArray(rawClusterMap)) {
+        for (const [k, v] of Object.entries(rawClusterMap as Record<string, string>)) {
+            if (typeof v === 'string') {
+                clusterToCategory[k.trim().toLowerCase()] = v.trim().toLowerCase();
+            }
+        }
+    }
+
+    // ── Parse default_fallback_category ──
+    const rawFallback = parsed['default_fallback_category'];
+    let defaultFallbackCategory: string;
+    if (typeof rawFallback === 'string' && rawFallback.trim()) {
+        defaultFallbackCategory = rawFallback.trim().toLowerCase();
+    } else {
+        defaultFallbackCategory = categories[0]?.slug || 'general';
+        logger.warn('taxonomy_config: "default_fallback_category" missing — using first category slug as fallback', {
+            fallback: defaultFallbackCategory,
+        });
+    }
+
+    // ── Parse news_relevance_keywords ──
+    const rawNewsKw = parsed['news_relevance_keywords'];
+    const newsRelevanceKeywords: string[] = Array.isArray(rawNewsKw)
+        ? rawNewsKw.filter((k: unknown) => typeof k === 'string' && (k as string).trim()).map((k: unknown) => (k as string).trim().toLowerCase())
+        : [];
+
+    // ── Parse news_default_cluster ──
+    const rawNewsCluster = parsed['news_default_cluster'];
+    let newsDefaultCluster: string;
+    if (typeof rawNewsCluster === 'string' && rawNewsCluster.trim()) {
+        newsDefaultCluster = rawNewsCluster.trim().toLowerCase();
+    } else {
+        newsDefaultCluster = 'news';
+        logger.warn('taxonomy_config: "news_default_cluster" missing — falling back to "news". Check your taxonomy_config.yaml.');
+    }
+
+    // ── Parse image_style_hint ──
+    const rawImageStyle = parsed['image_style_hint'];
+    let imageStyleHint: string;
+    if (typeof rawImageStyle === 'string' && rawImageStyle.trim()) {
+        imageStyleHint = rawImageStyle.trim();
+    } else {
+        imageStyleHint = 'vibrant professional photography';
+        logger.warn('taxonomy_config: "image_style_hint" missing — falling back to "vibrant professional photography". Check your taxonomy_config.yaml.');
+    }
+
     const config: TaxonomyConfig = {
         version: String(parsed['version']),
         tagWhitelist,
@@ -364,6 +457,13 @@ export function loadTaxonomyConfig(configPath?: string): TaxonomyConfig {
             graduated: Array.isArray(rawArchive['graduated']) ? rawArchive['graduated'] as string[] : [],
         },
         approvedAdditions,
+        categories,
+        categorySlugs,
+        clusterToCategory,
+        defaultFallbackCategory,
+        newsRelevanceKeywords,
+        newsDefaultCluster,
+        imageStyleHint,
     };
 
     logger.info('Taxonomy config loaded', {
@@ -372,6 +472,12 @@ export function loadTaxonomyConfig(configPath?: string): TaxonomyConfig {
         groups: [...config.tagWhitelist.keys()].join(', '),
         max_tags_per_post: config.maxTagsPerPost,
         approved_additions_count: approvedAdditions.length,
+        categories_count: categories.length,
+        cluster_mappings: Object.keys(clusterToCategory).length,
+        default_fallback: defaultFallbackCategory,
+        news_keywords_count: newsRelevanceKeywords.length,
+        news_default_cluster: newsDefaultCluster,
+        image_style_hint: imageStyleHint,
     });
 
     _cached = config;

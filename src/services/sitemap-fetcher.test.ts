@@ -18,19 +18,19 @@ import type { SitemapPair } from '../types';
 
 describe('humanizeSlug', () => {
     it('converts simple slug to title case', () => {
-        expect(humanizeSlug('/best-golf-clubs/')).toBe('Best Golf Clubs');
+        expect(humanizeSlug('/best-products/')).toBe('Best Products');
     });
 
     it('handles nested paths (uses last segment)', () => {
-        expect(humanizeSlug('/hoc-golf/swing-tips/')).toBe('Swing Tips');
+        expect(humanizeSlug('/guides/swing-tips/')).toBe('Swing Tips');
     });
 
     it('handles slug without slashes', () => {
-        expect(humanizeSlug('golf-basics')).toBe('Golf Basics');
+        expect(humanizeSlug('topic-basics')).toBe('Topic Basics');
     });
 
     it('handles single-word slug', () => {
-        expect(humanizeSlug('/golf/')).toBe('Golf');
+        expect(humanizeSlug('/topics/')).toBe('Topics');
     });
 
     it('handles empty slug', () => {
@@ -44,15 +44,15 @@ describe('parseSitemapXml', () => {
     it('parses standard urlset sitemap', () => {
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
     <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-      <url><loc>https://example.com/hoc-golf/</loc></url>
-      <url><loc>https://example.com/san-golf/</loc></url>
+      <url><loc>https://example.com/guides/</loc></url>
+      <url><loc>https://example.com/reviews/</loc></url>
       <url><loc>https://example.com/mua-sam/</loc></url>
     </urlset>`;
 
         const urls = parseSitemapXml(xml);
         expect(urls).toHaveLength(3);
-        expect(urls[0]).toBe('https://example.com/hoc-golf/');
-        expect(urls[1]).toBe('https://example.com/san-golf/');
+        expect(urls[0]).toBe('https://example.com/guides/');
+        expect(urls[1]).toBe('https://example.com/reviews/');
         expect(urls[2]).toBe('https://example.com/mua-sam/');
     });
 
@@ -89,11 +89,11 @@ describe('isSitemapIndex', () => {
 
 describe('urlToSlug', () => {
     it('extracts path from full URL', () => {
-        expect(urlToSlug('https://example.com/hoc-golf/swing-tips/')).toBe('/hoc-golf/swing-tips/');
+        expect(urlToSlug('https://example.com/guides/swing-tips/')).toBe('/guides/swing-tips/');
     });
 
     it('handles URL without trailing slash', () => {
-        expect(urlToSlug('https://example.com/hoc-golf')).toBe('/hoc-golf');
+        expect(urlToSlug('https://example.com/guides')).toBe('/guides');
     });
 
     it('handles root URL', () => {
@@ -110,23 +110,23 @@ describe('urlToSlug', () => {
 
 describe('filterByCluster', () => {
     const samplePairs: SitemapPair[] = [
-        { slug: '/hoc-golf/swing-basics/', title: 'Swing Basics' },
-        { slug: '/hoc-golf/putting-tips/', title: 'Putting Tips' },
-        { slug: '/san-golf/long-bien/', title: 'Long Bien' },
-        { slug: '/san-golf/phu-my/', title: 'Phu My' },
-        { slug: '/mua-sam/gay-golf-tot-nhat/', title: 'Gay Golf Tot Nhat' },
-        { slug: '/hoc-golf/grip-technique/', title: 'Grip Technique' },
+        { slug: '/guides/swing-basics/', title: 'Swing Basics' },
+        { slug: '/guides/putting-tips/', title: 'Putting Tips' },
+        { slug: '/reviews/long-bien/', title: 'Long Bien' },
+        { slug: '/reviews/phu-my/', title: 'Phu My' },
+        { slug: '/mua-sam/best-products/', title: 'Best Products' },
+        { slug: '/guides/grip-technique/', title: 'Grip Technique' },
         { slug: '/tin-tuc/tournament-2024/', title: 'Tournament 2024' },
-        { slug: '/hoc-golf/bunker-shots/', title: 'Bunker Shots' },
-        { slug: '/hoc-golf/driver-distance/', title: 'Driver Distance' },
-        { slug: '/hoc-golf/iron-accuracy/', title: 'Iron Accuracy' },
+        { slug: '/guides/bunker-shots/', title: 'Bunker Shots' },
+        { slug: '/guides/driver-distance/', title: 'Driver Distance' },
+        { slug: '/guides/iron-accuracy/', title: 'Iron Accuracy' },
     ];
 
     it('prioritizes same-cluster matches', () => {
-        const result = filterByCluster(samplePairs, 'golf swing', 'hoc-golf', 5);
+        const result = filterByCluster(samplePairs, 'product review', 'guides', 5);
         expect(result.length).toBeLessThanOrEqual(5);
-        // All hoc-golf items should be prioritized
-        expect(result.some(p => p.slug.includes('/hoc-golf/'))).toBe(true);
+        // All guides items should be prioritized
+        expect(result.some(p => p.slug.includes('/guides/'))).toBe(true);
     });
 
     it('falls back to keyword overlap when no cluster', () => {
@@ -136,7 +136,7 @@ describe('filterByCluster', () => {
     });
 
     it('caps result at maxPairs', () => {
-        const result = filterByCluster(samplePairs, 'golf', 'hoc-golf', 3);
+        const result = filterByCluster(samplePairs, 'topics', 'guides', 3);
         expect(result.length).toBeLessThanOrEqual(3);
     });
 
@@ -146,17 +146,17 @@ describe('filterByCluster', () => {
             slug: `/page-${i}/`,
             title: `Page ${i}`,
         }));
-        const result = filterByCluster(manyPairs, 'golf', undefined);
+        const result = filterByCluster(manyPairs, 'topics', undefined);
         expect(result.length).toBeLessThanOrEqual(20);
     });
 
     it('returns empty array for empty input', () => {
-        expect(filterByCluster([], 'golf', 'hoc-golf')).toEqual([]);
+        expect(filterByCluster([], 'topics', 'guides')).toEqual([]);
     });
 
     it('is deterministic — same inputs produce same outputs', () => {
-        const result1 = filterByCluster(samplePairs, 'golf swing', 'hoc-golf', 5);
-        const result2 = filterByCluster(samplePairs, 'golf swing', 'hoc-golf', 5);
+        const result1 = filterByCluster(samplePairs, 'product review', 'guides', 5);
+        const result2 = filterByCluster(samplePairs, 'product review', 'guides', 5);
         expect(result1).toEqual(result2);
     });
 });
@@ -186,8 +186,8 @@ describe('fetchSitemapPairs', () => {
     it('parses valid sitemap response into pairs', async () => {
         const sitemapXml = `<?xml version="1.0"?>
     <urlset>
-      <url><loc>https://example.com/hoc-golf/swing/</loc></url>
-      <url><loc>https://example.com/san-golf/review/</loc></url>
+      <url><loc>https://example.com/guides/swing/</loc></url>
+      <url><loc>https://example.com/reviews/review/</loc></url>
     </urlset>`;
 
         vi.stubGlobal(
@@ -197,14 +197,14 @@ describe('fetchSitemapPairs', () => {
 
         const result = await fetchSitemapPairs('https://example.com');
         expect(result).toHaveLength(2);
-        expect(result[0]).toEqual({ slug: '/hoc-golf/swing/', title: 'Swing' });
-        expect(result[1]).toEqual({ slug: '/san-golf/review/', title: 'Review' });
+        expect(result[0]).toEqual({ slug: '/guides/swing/', title: 'Swing' });
+        expect(result[1]).toEqual({ slug: '/reviews/review/', title: 'Review' });
     });
 
     it('deduplicates URLs by slug', async () => {
         const sitemapXml = `<urlset>
-      <url><loc>https://example.com/golf-tips/</loc></url>
-      <url><loc>https://example.com/golf-tips/</loc></url>
+      <url><loc>https://example.com/topic-tips/</loc></url>
+      <url><loc>https://example.com/topic-tips/</loc></url>
     </urlset>`;
 
         vi.stubGlobal(

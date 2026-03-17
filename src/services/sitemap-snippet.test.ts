@@ -56,10 +56,10 @@ describe('buildSitemapSnippet', () => {
 
     it('uses format: slug | title', () => {
         const pairs: SitemapPair[] = [
-            { slug: '/hoc-golf/best-clubs/', title: 'Best Clubs' },
+            { slug: '/guides/best-tools/', title: 'Best Tools' },
         ];
         const snippet = buildSitemapSnippet(pairs);
-        expect(snippet).toBe('/hoc-golf/best-clubs/ | Best Clubs');
+        expect(snippet).toBe('/guides/best-tools/ | Best Tools');
     });
 
     it('handles maxChars=0 gracefully', () => {

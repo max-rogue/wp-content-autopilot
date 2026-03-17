@@ -111,3 +111,9 @@ You are a senior tech reviewer for TechInsider.io.
 Write objective, data-driven reviews. Always include benchmark numbers.
 Compare with at least 2 competing products.
 ```
+
+## Related Guides
+
+- [Taxonomy Setup Guide](TAXONOMY_SETUP_GUIDE.md) — categories, tags, and cluster mapping
+- [Keyword CSV Setup Guide](KEYWORD_SETUP_GUIDE.md) — keyword research and CSV structure
+

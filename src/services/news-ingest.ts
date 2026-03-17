@@ -1,6 +1,6 @@
 /**
  * News RSS/Atom Ingestion Service.
- * Fetches golf news from configured RSS feeds and inserts into publish_queue
+ * Fetches news from configured RSS feeds and inserts into publish_queue
  * as BlogPost items with news_source_url metadata.
  *
  * Pattern mirrors csv-ingest.ts:
@@ -19,6 +19,7 @@ import type Database from 'better-sqlite3';
 import { PublishQueueRepo } from '../db/repositories';
 import { logger } from '../logger';
 import { loadConfig } from '../config';
+import { loadTaxonomyConfig } from '../config/taxonomy-config-loader';
 
 // ═══════════════════════════════════════════════════════════════════
 // Types
@@ -261,42 +262,44 @@ export async function ingestNews(
     const cutoff = new Date(Date.now() - lookbackHours * 60 * 60 * 1000);
     const recent = allCandidates.filter(c => c.publishedAt >= cutoff);
 
-    // ── Golf relevance filter ────────────────────────────────────
-    // Only keep articles that mention golf-related terms in title or summary.
-    // This prevents non-golf sports articles from general feeds (e.g. VnExpress Thể Thao).
-    const GOLF_KEYWORDS = [
-        'golf', 'golfer', 'gôn', 'gậy golf', 'sân golf',
-        'pga', 'lpga', 'masters', 'ryder cup', 'us open golf',
-        'the open', 'british open',
-        'swing', 'handicap', 'birdie', 'bogey', 'eagle', 'par',
-        'fairway', 'green', 'bunker', 'caddie', 'caddy',
-        'iron', 'driver', 'putter', 'wedge', 'shaft',
-        'tee time', 'tee-time', 'scorecard',
-        'tiger woods', 'rory mcilroy', 'scottie scheffler', 'jon rahm',
-        'bryson dechambeau', 'jordan spieth', 'xander schauffele',
-        'arnold palmer', 'jack nicklaus',
-        'liv golf', 'dp world tour', 'korn ferry',
-    ];
-    const golfRelevant = recent.filter(c => {
-        const text = `${c.title} ${c.summary}`.toLowerCase();
-        return GOLF_KEYWORDS.some(kw => text.includes(kw));
-    });
+    // ── Niche relevance filter ────────────────────────────────────
+    // Only keep articles that mention niche-related terms in title or summary.
+    // Keywords are loaded from taxonomy_config.yaml → news_relevance_keywords.
+    // If empty, all articles are accepted (no filter).
+    const taxConfig = loadTaxonomyConfig();
+    const RELEVANCE_KEYWORDS = taxConfig.newsRelevanceKeywords;
 
-    logger.info('news-ingest: golf filter', {
-        before: recent.length,
-        after: golfRelevant.length,
-        filtered_out: recent.length - golfRelevant.length,
-    });
+    let relevantArticles: NewsCandidate[];
+
+    if (RELEVANCE_KEYWORDS.length === 0) {
+        // No keywords configured — accept all articles
+        relevantArticles = recent;
+        logger.info('news-ingest: relevance filter skipped (no keywords configured)', {
+            articles: recent.length,
+        });
+    } else {
+        relevantArticles = recent.filter(c => {
+            const text = `${c.title} ${c.summary}`.toLowerCase();
+            return RELEVANCE_KEYWORDS.some(kw => text.includes(kw));
+        });
+
+        logger.info('news-ingest: relevance filter', {
+            before: recent.length,
+            after: relevantArticles.length,
+            filtered_out: recent.length - relevantArticles.length,
+        });
+    }
 
     // ── Relevance scoring ─────────────────────────────────────────
-    // Rank articles by "golf-relevance score": more golf keyword matches = higher score.
+    // Rank articles by relevance score: more keyword matches = higher score.
     // Title matches count 2x (title relevance is a stronger signal).
     // This ensures the single daily news pick (maxItems=1) is the most noteworthy.
     function scoreCandidate(c: NewsCandidate): number {
+        if (RELEVANCE_KEYWORDS.length === 0) return 0;
         const titleLower = c.title.toLowerCase();
         const summaryLower = c.summary.toLowerCase();
         let score = 0;
-        for (const kw of GOLF_KEYWORDS) {
+        for (const kw of RELEVANCE_KEYWORDS) {
             if (titleLower.includes(kw)) score += 2;  // title match = 2x weight
             if (summaryLower.includes(kw)) score += 1;
         }
@@ -304,14 +307,14 @@ export async function ingestNews(
     }
 
     // Sort by relevance score DESC, then by publishedAt DESC (tiebreaker: newest)
-    golfRelevant.sort((a, b) => {
+    relevantArticles.sort((a, b) => {
         const scoreDiff = scoreCandidate(b) - scoreCandidate(a);
         if (scoreDiff !== 0) return scoreDiff;
         return b.publishedAt.getTime() - a.publishedAt.getTime();
     });
 
-    if (golfRelevant.length > 0) {
-        const top = golfRelevant[0];
+    if (relevantArticles.length > 0) {
+        const top = relevantArticles[0];
         logger.info('news-ingest: top pick', {
             title: top.title.slice(0, 80),
             score: scoreCandidate(top),
@@ -320,7 +323,7 @@ export async function ingestNews(
     }
 
     // Cap to maxItems (default 1 = single best article per day)
-    const toProcess = golfRelevant.slice(0, maxItems);
+    const toProcess = relevantArticles.slice(0, maxItems);
 
     const queueRepo = new PublishQueueRepo(db);
     let inserted = 0;
@@ -348,7 +351,7 @@ export async function ingestNews(
             normalized_keyword: keyword.toLowerCase().trim(),
             language: config.defaultLanguage,
             idempotency_key: idempotencyKey,
-            cluster: 'news',
+            cluster: loadTaxonomyConfig().newsDefaultCluster,
             content_type: 'BlogPost',
             class_hint: 'B',
             blogpost_subtype: null,

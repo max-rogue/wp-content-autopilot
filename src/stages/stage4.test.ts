@@ -34,18 +34,18 @@ function createTestDb(): Database.Database {
 function makeStage3(overrides?: Partial<Stage3Output>): Stage3Output {
     return {
         schema_version: SCHEMA_VERSION,
-        title: 'Cách Đánh Golf Chuẩn',
-        content_markdown: '# Cách Đánh Golf\n\nNội dung bài viết.',
-        excerpt: 'Hướng dẫn golf.',
-        suggested_slug: 'cach-danh-golf',
-        category: 'hoc-golf',
-        tags: ['golf'],
-        focus_keyword: 'cách đánh golf',
+        title: 'Cách Chọn Sản Phẩm Tốt',
+        content_markdown: '# Cách Chọn Sản Phẩm\n\nNội dung bài viết.',
+        excerpt: 'Hướng dẫn sản phẩm.',
+        suggested_slug: 'cach-chon-san-pham',
+        category: 'guides',
+        tags: ['guides'],
+        focus_keyword: 'cách chọn sản phẩm',
         additional_keywords: [],
-        meta_title: 'Cách Đánh Golf | MySite',
-        meta_description: 'Hướng dẫn chi tiết cách đánh golf.',
+        meta_title: 'Cách Chọn Sản Phẩm | MySite',
+        meta_description: 'Hướng dẫn chi tiết cách chọn sản phẩm.',
         faq: [{ question: 'Q?', answer: 'A' }],
-        featured_image: { prompt: 'Golf swing illustration', alt_text: 'cách đánh golf' },
+        featured_image: { prompt: 'Product illustration', alt_text: 'cách chọn sản phẩm' },
         citations: [],
         publish_recommendation: 'PUBLISH',
         reasons: [],
@@ -91,7 +91,7 @@ function mockWriterService(opts?: {
     return {
         generateImage: vi.fn().mockImplementation(async () => {
             if (opts?.imagePromptFail) throw new Error('prompt_gen_failed');
-            return { prompt: 'Generated golf image prompt', alt_text: 'golf alt text' };
+            return { prompt: 'Generated product image prompt', alt_text: 'product alt text' };
         }),
         generateImageBytes: vi.fn().mockImplementation(async (prompt: string, altText: string) => {
             // Detect role from prompt content: hero prompts contain "hero banner"
@@ -149,7 +149,7 @@ describe('Stage 4 — Dual Image Pipeline', () => {
         const result = await runStage4({
             queueId,
             stage3: makeStage3({
-                content_markdown: 'This article discusses video game golf simulations.',
+                content_markdown: 'This article discusses video game simulations.',
             }),
             queueRepo,
             imageRequired: false,

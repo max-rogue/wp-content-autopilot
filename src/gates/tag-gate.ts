@@ -173,7 +173,7 @@ export function runTagGate(input: TagGateInput): TagGateResult {
 /**
  * Cap accepted tags to max_tags_per_post by priority.
  * Priority order (01_ContentSpec §2.2.4): Brand > Skill > City > Format
- * Expanded: brand > shaft_brand > ball_brand > skill > handicap_band > technology > city > format
+ * Expanded per TAG_GROUP_PRIORITY in taxonomy-config-loader.ts
  *
  * Within same priority group, preserve original order (deterministic).
  */

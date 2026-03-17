@@ -17,13 +17,13 @@ import { normalizeTagSlug, runTagGate, type TagGateInput, type TagGateResult } f
 import type { TaxonomyConfig, TagGroupName } from '../config/taxonomy-config-loader';
 
 function makeTaxonomyConfig(overrides?: Partial<TaxonomyConfig>): TaxonomyConfig {
-    const brandTags = new Set(['titleist', 'callaway', 'taylormade', 'ping', 'honma', 'mizuno',
-        'srixon', 'cobra', 'cleveland', 'xxio', 'pxg', 'bridgestone']);
-    const skillTags = new Set(['slice', 'hook', 'topping', 'putting', 'chipping', 'bunker',
-        'swing-speed', 'handicap']);
+    const brandTags = new Set(['brand-alpha', 'brand-beta', 'brand-gamma', 'brand-delta', 'brand-echo', 'brand-foxtrot',
+        'brand-golf', 'brand-hotel', 'brand-india', 'brand-juliet', 'brand-kilo', 'brand-lima']);
+    const skillTags = new Set(['skill-basic', 'skill-intermediate', 'skill-advanced', 'skill-expert', 'skill-pro', 'skill-master',
+        'skill-speed', 'skill-precision']);
     const cityTags = new Set(['ho-chi-minh', 'ha-noi', 'da-nang', 'can-tho']);
     const formatTags = new Set(['buying-guide', 'comparison', 'review', 'glossary']);
-    const technologyTags = new Set(['trackman', 'golf-simulator', 'launch-monitor']);
+    const technologyTags = new Set(['tech-sensor', 'tech-simulator', 'tech-monitor']);
 
     const tagWhitelist = new Map<TagGroupName, Set<string>>([
         ['brand', brandTags],
@@ -39,7 +39,7 @@ function makeTaxonomyConfig(overrides?: Partial<TaxonomyConfig>): TaxonomyConfig
     }
 
     return {
-        version: '2.1',
+        version: '2.3',
         tagWhitelist,
         flatWhitelist,
         cityTags,
@@ -53,7 +53,7 @@ function makeTaxonomyConfig(overrides?: Partial<TaxonomyConfig>): TaxonomyConfig
 
 describe('normalizeTagSlug', () => {
     it('lowercases and trims', () => {
-        expect(normalizeTagSlug(' Titleist ')).toBe('titleist');
+        expect(normalizeTagSlug(' Brand-Alpha ')).toBe('brand-alpha');
     });
 
     it('replaces spaces with hyphens', () => {
@@ -66,11 +66,11 @@ describe('normalizeTagSlug', () => {
     });
 
     it('handles đ/Đ explicitly', () => {
-        expect(normalizeTagSlug('Đánh golf')).toBe('danh-golf');
+        expect(normalizeTagSlug('Đánh bóng')).toBe('danh-bong');
     });
 
     it('collapses multiple hyphens', () => {
-        expect(normalizeTagSlug('golf---simulator')).toBe('golf-simulator');
+        expect(normalizeTagSlug('tech---simulator')).toBe('tech-simulator');
     });
 
     it('removes non-alphanumeric chars', () => {
@@ -89,13 +89,13 @@ describe('runTagGate — whitelist intersection', () => {
     it('accepts whitelisted tags', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['Titleist', 'putting', 'buying-guide'],
+            proposedTags: ['Brand-Alpha', 'skill-expert', 'buying-guide'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: false,
         });
 
-        expect(result.finalTags).toContain('titleist');
-        expect(result.finalTags).toContain('putting');
+        expect(result.finalTags).toContain('brand-alpha');
+        expect(result.finalTags).toContain('skill-expert');
         expect(result.finalTags).toContain('buying-guide');
         expect(result.droppedTags).toHaveLength(0);
     });
@@ -117,12 +117,12 @@ describe('runTagGate — whitelist intersection', () => {
     it('normalizes proposed tags before matching', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['TITLEIST', 'Buying Guide', 'Đà Nẵng'],
+            proposedTags: ['BRAND-ALPHA', 'Buying Guide', 'Đà Nẵng'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: true,
         });
 
-        expect(result.finalTags).toContain('titleist');
+        expect(result.finalTags).toContain('brand-alpha');
         expect(result.finalTags).toContain('buying-guide');
         expect(result.finalTags).toContain('da-nang');
     });
@@ -130,12 +130,12 @@ describe('runTagGate — whitelist intersection', () => {
     it('deduplicates tags by slug', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['Titleist', 'titleist', 'TITLEIST'],
+            proposedTags: ['Brand-Alpha', 'brand-alpha', 'BRAND-ALPHA'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: false,
         });
 
-        expect(result.finalTags).toEqual(['titleist']);
+        expect(result.finalTags).toEqual(['brand-alpha']);
     });
 });
 
@@ -145,26 +145,26 @@ describe('runTagGate — city rule', () => {
     it('drops city tags when hasVerifiedLocalValue is false', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['ho-chi-minh', 'titleist'],
+            proposedTags: ['ho-chi-minh', 'brand-alpha'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: false,
         });
 
         expect(result.finalTags).not.toContain('ho-chi-minh');
         expect(result.droppedTags).toContain('ho-chi-minh');
-        expect(result.finalTags).toContain('titleist');
+        expect(result.finalTags).toContain('brand-alpha');
     });
 
     it('allows city tags when hasVerifiedLocalValue is true', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['ho-chi-minh', 'titleist'],
+            proposedTags: ['ho-chi-minh', 'brand-alpha'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: true,
         });
 
         expect(result.finalTags).toContain('ho-chi-minh');
-        expect(result.finalTags).toContain('titleist');
+        expect(result.finalTags).toContain('brand-alpha');
     });
 });
 
@@ -175,9 +175,9 @@ describe('runTagGate — priority cap', () => {
         const config = makeTaxonomyConfig({ maxTagsPerPost: 8 });
         const result = runTagGate({
             proposedTags: [
-                'titleist', 'callaway', 'taylormade', 'ping',
-                'honma', 'mizuno', 'srixon', 'cobra',
-                'cleveland', 'xxio', // 10 tags
+                'brand-alpha', 'brand-beta', 'brand-gamma', 'brand-delta',
+                'brand-echo', 'brand-foxtrot', 'brand-golf', 'brand-hotel',
+                'brand-india', 'brand-juliet', // 10 tags
             ],
             taxonomyConfig: config,
             hasVerifiedLocalValue: false,
@@ -192,8 +192,8 @@ describe('runTagGate — priority cap', () => {
         const result = runTagGate({
             proposedTags: [
                 'buying-guide', // format (lowest priority)
-                'slice',        // skill
-                'titleist',     // brand (highest priority)
+                'skill-basic',  // skill
+                'brand-alpha',  // brand (highest priority)
                 'ho-chi-minh',  // city
             ],
             taxonomyConfig: config,
@@ -201,8 +201,8 @@ describe('runTagGate — priority cap', () => {
         });
 
         // Should keep brand, skill, and city (higher priority than format)
-        expect(result.finalTags).toContain('titleist');
-        expect(result.finalTags).toContain('slice');
+        expect(result.finalTags).toContain('brand-alpha');
+        expect(result.finalTags).toContain('skill-basic');
         // Format should be dropped (lowest priority)
         expect(result.finalTags).not.toContain('buying-guide');
         expect(result.droppedTags).toContain('buying-guide');
@@ -211,7 +211,7 @@ describe('runTagGate — priority cap', () => {
     it('no cap needed when <= max', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['titleist', 'putting'],
+            proposedTags: ['brand-alpha', 'skill-expert'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: false,
         });
@@ -296,13 +296,13 @@ describe('runTagGate — edge cases', () => {
     it('mixed whitelisted and non-whitelisted tags', () => {
         const config = makeTaxonomyConfig();
         const result = runTagGate({
-            proposedTags: ['titleist', 'unknown-brand', 'putting', 'random-skill'],
+            proposedTags: ['brand-alpha', 'unknown-brand', 'skill-expert', 'random-skill'],
             taxonomyConfig: config,
             hasVerifiedLocalValue: false,
         });
 
-        expect(result.finalTags).toContain('titleist');
-        expect(result.finalTags).toContain('putting');
+        expect(result.finalTags).toContain('brand-alpha');
+        expect(result.finalTags).toContain('skill-expert');
         expect(result.droppedTags).toContain('unknown-brand');
         expect(result.droppedTags).toContain('random-skill');
     });

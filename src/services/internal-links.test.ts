@@ -57,7 +57,7 @@ describe('T-10 Filtering — ≤ 20 pairs cap', () => {
             slug: `/page-${String(i).padStart(3, '0')}/`,
             title: `Page ${i}`,
         }));
-        const result = filterByCluster(pairs, 'golf tips', 'hoc-golf');
+        const result = filterByCluster(pairs, 'product tips', 'guides');
         expect(result.length).toBeLessThanOrEqual(20);
     });
 
@@ -66,7 +66,7 @@ describe('T-10 Filtering — ≤ 20 pairs cap', () => {
             { slug: '/a/', title: 'A' },
             { slug: '/b/', title: 'B' },
         ];
-        const result = filterByCluster(pairs, 'golf', undefined);
+        const result = filterByCluster(pairs, 'product', undefined);
         expect(result.length).toBe(2);
     });
 });
@@ -90,8 +90,8 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
         const repo = new PublishQueueRepo(database);
         repo.insert({
             id,
-            picked_keyword: 'golf swing',
-            normalized_keyword: 'golf_swing',
+            picked_keyword: 'product review',
+            normalized_keyword: 'product_review',
             language: 'vi',
             idempotency_key: `idem-${id}`,
             cluster: 'technique',
@@ -121,7 +121,7 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
             schema_version: SCHEMA_VERSION,
             queue_id: queueId,
             outline_points: ['Introduction', 'Main', 'FAQ', 'Conclusion'],
-            facts: [{ claim: 'Golf is fun', source_url: 'https://example.com' }],
+            facts: [{ claim: 'This is useful', source_url: 'https://example.com' }],
             definitions: [],
             unknowns: [],
             citations_required: true,
@@ -136,19 +136,19 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
             content_markdown: '# Test\n\nContent here.',
             excerpt: 'Test excerpt',
             suggested_slug: 'test-slug',
-            category: 'hoc-golf',
-            tags: ['golf'],
+            category: 'guides',
+            tags: ['guides'],
             focus_keyword: 'test keyword',
             additional_keywords: [],
             meta_title: 'Test | MySite',
-            meta_description: 'A test description for the golf article.',
+            meta_description: 'A test description for the test article.',
             faq: [
                 { question: 'Q1?', answer: 'A1' },
                 { question: 'Q2?', answer: 'A2' },
                 { question: 'Q3?', answer: 'A3' },
             ],
-            featured_image: { prompt: 'Golf illustration', alt_text: 'golf' },
-            citations: [{ claim: 'Golf is fun', source_url: 'https://example.com' }],
+            featured_image: { prompt: 'Product illustration', alt_text: 'product' },
+            citations: [{ claim: 'This is useful', source_url: 'https://example.com' }],
             publish_recommendation: 'DRAFT',
             reasons: [],
             missing_data_fields: [],
@@ -164,15 +164,15 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
 
     it('strips <a> tags with hrefs not in sitemap snippet', async () => {
         const sitemapSnippet: SitemapPair[] = [
-            { slug: '/hoc-golf/putting/', title: 'Putting' },
-            { slug: '/hoc-golf/chipping/', title: 'Chipping' },
+            { slug: '/guides/putting/', title: 'Putting' },
+            { slug: '/guides/chipping/', title: 'Chipping' },
         ];
 
         const contentWithLinks = [
-            '# Golf Swing',
-            'Learn about <a href="/hoc-golf/putting/">putting techniques</a>.',
+            '# Product Review',
+            'Learn about <a href="/guides/putting/">putting techniques</a>.',
             'Also check <a href="/invented-slug/">fake page</a>.',
-            'And see <a href="/hoc-golf/chipping/">chipping tips</a>.',
+            'And see <a href="/guides/chipping/">chipping tips</a>.',
         ].join('\n');
 
         const draftResult: DraftResult = {
@@ -187,7 +187,7 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -201,8 +201,8 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
         const md = result.output!.content_markdown;
 
         // Valid links should be kept
-        expect(md).toContain('<a href="/hoc-golf/putting/">putting techniques</a>');
-        expect(md).toContain('<a href="/hoc-golf/chipping/">chipping tips</a>');
+        expect(md).toContain('<a href="/guides/putting/">putting techniques</a>');
+        expect(md).toContain('<a href="/guides/chipping/">chipping tips</a>');
 
         // Invented link should be stripped (text kept, link removed)
         expect(md).not.toContain('<a href="/invented-slug/">');
@@ -210,8 +210,8 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
 
         // internal_links_used should track the valid links
         expect(result.output!.internal_links_used).toHaveLength(2);
-        expect(result.output!.internal_links_used![0].slug).toBe('/hoc-golf/putting/');
-        expect(result.output!.internal_links_used![1].slug).toBe('/hoc-golf/chipping/');
+        expect(result.output!.internal_links_used![0].slug).toBe('/guides/putting/');
+        expect(result.output!.internal_links_used![1].slug).toBe('/guides/chipping/');
     });
 
     it('does not strip links when no sitemap snippet provided', async () => {
@@ -228,7 +228,7 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -245,7 +245,7 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
 
     it('handles content with no <a> tags gracefully', async () => {
         const sitemapSnippet: SitemapPair[] = [
-            { slug: '/hoc-golf/putting/', title: 'Putting' },
+            { slug: '/guides/putting/', title: 'Putting' },
         ];
 
         const draftResult: DraftResult = {
@@ -260,7 +260,7 @@ describe('T-10 — Stage 3 strips unknown hrefs', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,

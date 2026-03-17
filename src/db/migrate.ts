@@ -178,6 +178,8 @@ const MIGRATIONS: Array<{ version: number; name: string; sql: string }> = [
         last_verified_at TEXT NOT NULL,
         verification_tier INTEGER NOT NULL CHECK(verification_tier IN (1, 2))
       );
+      -- Legacy migration: maps original golf-niche entity types to generic types.
+      -- For non-golf niches these WHEN clauses are no-ops; ELSE 'business' covers all.
       INSERT INTO new_local_db
       SELECT
         entity_id,

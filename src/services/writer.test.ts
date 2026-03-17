@@ -118,7 +118,7 @@ describe('WriterService — mock mode (per-provider keys)', () => {
 
     it('research() returns mock Stage2Output in mock mode', async () => {
         const writer = new WriterService(makeConfig());
-        const result = await writer.research('q1', 'golf swing', 'BlogPost', ['local']);
+        const result = await writer.research('q1', 'product review', 'BlogPost', ['local']);
 
         expect(result.schema_version).toBe(SCHEMA_VERSION);
         expect(result.queue_id).toBe('q1');
@@ -128,11 +128,11 @@ describe('WriterService — mock mode (per-provider keys)', () => {
 
     it('draft() returns DraftResult with output and rawText in mock mode', async () => {
         const writer = new WriterService(makeConfig());
-        const research = await writer.research('q1', 'golf swing', 'BlogPost', []);
-        const result = await writer.draft('q1', research, 'golf swing', 'BlogPost');
+        const research = await writer.research('q1', 'product review', 'BlogPost', []);
+        const result = await writer.draft('q1', research, 'product review', 'BlogPost');
 
         expect(result.output.schema_version).toBe(SCHEMA_VERSION);
-        expect(result.output.title).toContain('golf swing');
+        expect(result.output.title).toContain('product review');
         expect(result.output.publish_recommendation).toBe('DRAFT');
         expect(result.rawText).toBe('mock_mode');
     });
@@ -149,10 +149,10 @@ describe('WriterService — mock mode (per-provider keys)', () => {
 
     it('generateImage() returns mock image data in mock mode', async () => {
         const writer = new WriterService(makeConfig());
-        const result = await writer.generateImage('golf swing', 'Golf Swing Guide');
+        const result = await writer.generateImage('product review', 'Product Review Guide');
 
-        expect(result.prompt).toContain('golf swing');
-        expect(result.alt_text).toBe('golf swing');
+        expect(result.prompt).toContain('product review');
+        expect(result.alt_text).toBe('product review');
     });
 });
 
@@ -230,7 +230,7 @@ describe('WriterService — grounding config builder', () => {
         // In mock mode, the grounding param is still set but execution is mocked
         const config = makeConfig({ llmResearchGrounding: 'google_search' });
         const writer = new WriterService(config);
-        const result = await writer.research('q1', 'golf grip', 'BlogPost', ['local']);
+        const result = await writer.research('q1', 'basic technique', 'BlogPost', ['local']);
 
         // Mock mode returns valid Stage2Output
         expect(result.schema_version).toBe(SCHEMA_VERSION);
@@ -240,7 +240,7 @@ describe('WriterService — grounding config builder', () => {
     it('research() passes no grounding when llmResearchGrounding is empty', async () => {
         const config = makeConfig({ llmResearchGrounding: '' });
         const writer = new WriterService(config);
-        const result = await writer.research('q1', 'golf grip', 'BlogPost', []);
+        const result = await writer.research('q1', 'basic technique', 'BlogPost', []);
 
         expect(result.schema_version).toBe(SCHEMA_VERSION);
     });
@@ -413,9 +413,9 @@ describe('normalizeDraftAliases', () => {
     });
 
     it('maps "keyword" → "focus_keyword"', () => {
-        const data = { title: 'T', keyword: 'golf swing' };
+        const data = { title: 'T', keyword: 'product review' };
         const result = normalizeDraftAliases(data);
-        expect(result.focus_keyword).toBe('golf swing');
+        expect(result.focus_keyword).toBe('product review');
         expect(result.keyword).toBeUndefined();
     });
 
@@ -445,23 +445,23 @@ describe('normalizeDraftAliases', () => {
     it('handles the exact LLM mismatch scenario: {title, excerpt, content}', () => {
         // This is the exact bug reproducer: LLM returns wrong keys
         const data = {
-            title: 'Golf Swing Guide',
-            excerpt: 'Learn about golf swings',
-            content: '# Golf Swing\n\nDetailed content here.',
-            slug: 'golf-swing-guide',
-            keyword: 'golf swing',
+            title: 'Product Review Guide',
+            excerpt: 'Learn about product reviews',
+            content: '# Product Review\n\nDetailed content here.',
+            slug: 'product-review-guide',
+            keyword: 'product review',
         };
         const result = normalizeDraftAliases(data);
         // content → content_markdown
-        expect(result.content_markdown).toBe('# Golf Swing\n\nDetailed content here.');
+        expect(result.content_markdown).toBe('# Product Review\n\nDetailed content here.');
         // slug → suggested_slug
-        expect(result.suggested_slug).toBe('golf-swing-guide');
+        expect(result.suggested_slug).toBe('product-review-guide');
         // keyword → focus_keyword
-        expect(result.focus_keyword).toBe('golf swing');
+        expect(result.focus_keyword).toBe('product review');
         // excerpt stays as excerpt (it IS a valid Stage3Output field)
-        expect(result.excerpt).toBe('Learn about golf swings');
+        expect(result.excerpt).toBe('Learn about product reviews');
         // Title stays
-        expect(result.title).toBe('Golf Swing Guide');
+        expect(result.title).toBe('Product Review Guide');
     });
 
     it('passes through correct keys unchanged', () => {
@@ -522,13 +522,13 @@ describe('WriterService — prompt template constraints', () => {
 
 
     it('research() systemPrompt ends with "Return valid JSON only"', async () => {
-        await writer.research('q1', 'golf', 'BlogPost', []);
+        await writer.research('q1', 'topic', 'BlogPost', []);
         const opts = callLlmSpy.mock.calls[0][0];
         expect(opts.systemPrompt).toContain('Return valid JSON only');
     });
 
     it('research() userPrompt includes context with class_hint when provided', async () => {
-        await writer.research('q1', 'golf', 'BlogPost', [], 'C', 'HowTo');
+        await writer.research('q1', 'topic', 'BlogPost', [], 'C', 'HowTo');
         const opts = callLlmSpy.mock.calls[0][0];
         expect(opts.userPrompt).toContain('class_hint');
         expect(opts.userPrompt).toContain('blogpost_subtype');
@@ -550,7 +550,7 @@ describe('WriterService — prompt template constraints', () => {
             outline_points: [], facts: [], definitions: [], unknowns: [],
             citations_required: false, citations_present: true,
         };
-        await writer.draft('q1', research, 'golf', 'BlogPost');
+        await writer.draft('q1', research, 'topic', 'BlogPost');
         const opts = callLlmSpy.mock.calls[0][0];
         expect(opts.systemPrompt).toContain('Return valid JSON only');
     });

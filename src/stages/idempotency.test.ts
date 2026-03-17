@@ -29,11 +29,11 @@ function makeQueueItem(overrides?: Partial<PublishQueueRow>): Omit<PublishQueueR
     const id = uuid();
     return {
         id,
-        picked_keyword: 'cách đánh golf',
-        normalized_keyword: 'cách đánh golf',
+        picked_keyword: 'cách chọn sản phẩm',
+        normalized_keyword: 'cách chọn sản phẩm',
         language: 'vi',
-        idempotency_key: 'cach-danh-golf__BlogPost__vi',
-        cluster: 'golf-basics',
+        idempotency_key: 'cach-chon-san-pham__BlogPost__vi',
+        cluster: 'basic-guides',
         content_type: 'BlogPost',
         class_hint: 'B',
         blogpost_subtype: null,
@@ -84,11 +84,11 @@ describe('Idempotency', () => {
         // Insert published version in content_index
         contentIndexRepo.upsert({
             wp_post_id: 42,
-            title: 'Cách đánh golf',
-            focus_keyword: 'cách đánh golf',
-            slug: 'cach-danh-golf',
-            url: 'https://example.com/blog/cach-danh-golf',
-            category: 'hoc-golf',
+            title: 'Cách chọn sản phẩm',
+            focus_keyword: 'cách chọn sản phẩm',
+            slug: 'cach-chon-san-pham',
+            url: 'https://example.com/blog/cach-chon-san-pham',
+            category: 'guides',
             tags: '[]',
             published_at: new Date().toISOString(),
             content_hash: 'abc123',
@@ -118,14 +118,14 @@ describe('Idempotency', () => {
         const id2 = uuid();
         queueRepo.insert(makeQueueItem({
             id: id1,
-            picked_keyword: 'cách đánh golf',
-            idempotency_key: 'cach-danh-golf__BlogPost__vi',
+            picked_keyword: 'cách chọn sản phẩm',
+            idempotency_key: 'cach-chon-san-pham__BlogPost__vi',
         }));
         queueRepo.insert(makeQueueItem({
             id: id2,
-            picked_keyword: 'grip golf',
-            normalized_keyword: 'grip golf',
-            idempotency_key: 'grip-golf__BlogPost__vi',
+            picked_keyword: 'kỹ thuật cơ bản',
+            normalized_keyword: 'kỹ thuật cơ bản',
+            idempotency_key: 'ky-thuat-co-ban__BlogPost__vi',
         }));
 
         const r1 = runStage1({
@@ -161,7 +161,7 @@ describe('Idempotency', () => {
         }));
 
         // First item should have recent publish
-        const hasRecent = queueRepo.hasRecentPublish('cách đánh golf', 14);
+        const hasRecent = queueRepo.hasRecentPublish('cách chọn sản phẩm', 14);
         expect(hasRecent).toBe(true);
     });
 });

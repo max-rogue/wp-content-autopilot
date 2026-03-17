@@ -34,7 +34,7 @@ describe('toSlugAnchor', () => {
     });
 
     it('handles Vietnamese diacritics', () => {
-        expect(toSlugAnchor('Học Golf Cơ Bản')).toBe('hoc-golf-co-ban');
+        expect(toSlugAnchor('Học Kỹ Năng Cơ Bản')).toBe('hoc-ky-nang-co-ban');
     });
 
     it('handles đ/Đ', () => {
@@ -42,11 +42,11 @@ describe('toSlugAnchor', () => {
     });
 
     it('removes special characters', () => {
-        expect(toSlugAnchor('What is golf? (Full Guide!)')).toBe('what-is-golf-full-guide');
+        expect(toSlugAnchor('What is this? (Full Guide!)')).toBe('what-is-this-full-guide');
     });
 
     it('collapses double hyphens', () => {
-        expect(toSlugAnchor('Golf -- Tips')).toBe('golf-tips');
+        expect(toSlugAnchor('Product -- Tips')).toBe('product-tips');
     });
 
     it('max 75 chars', () => {
@@ -65,7 +65,7 @@ describe('toSlugAnchor', () => {
     });
 
     it('same text produces same slug (stable)', () => {
-        const text = 'Cách Chọn Gậy Golf Phù Hợp';
+        const text = 'Cách Chọn Sản Phẩm Phù Hợp';
         expect(toSlugAnchor(text)).toBe(toSlugAnchor(text));
     });
 });
@@ -183,18 +183,18 @@ describe('contentHasTocBlock', () => {
 
 describe('buildHeroBlock', () => {
     it('produces valid Gutenberg wp:image block', () => {
-        const block = buildHeroBlock(42, 'https://example.com/hero.jpg', 'Golf hero');
+        const block = buildHeroBlock(42, 'https://example.com/hero.jpg', 'Product hero');
         expect(block).toContain('<!-- wp:image');
         expect(block).toContain('"id":42');
         expect(block).toContain('"sizeSlug":"large"');
         expect(block).toContain('wcap-hero-image');
         expect(block).toContain('src="https://example.com/hero.jpg"');
-        expect(block).toContain('alt="Golf hero"');
+        expect(block).toContain('alt="Product hero"');
         expect(block).toContain('<!-- /wp:image -->');
     });
 
     it('escapes special characters in alt text', () => {
-        const block = buildHeroBlock(1, 'https://x.com/a.jpg', 'golf "pro" <tips>');
+        const block = buildHeroBlock(1, 'https://x.com/a.jpg', 'product "pro" <tips>');
         expect(block).toContain('&quot;');
         expect(block).toContain('&lt;');
         expect(block).not.toContain('"pro"');

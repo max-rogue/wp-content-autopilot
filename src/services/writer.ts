@@ -20,6 +20,7 @@ import { SCHEMA_VERSION } from '../types';
 import { callGeminiSdk, redactErrorBody, generateGeminiImage } from './gemini-adapter';
 import { tryParseJsonResponse } from './json-repair';
 import { loadPromptRegistry } from '../config/prompt-loader';
+import { loadTaxonomyConfig } from '../config/taxonomy-config-loader';
 
 /** Draft result bundles the parsed output with the raw LLM text for diagnostics. */
 export interface DraftResult {
@@ -429,22 +430,22 @@ export class WriterService {
     if (this.isMockMode()) {
       const output: Stage3Output = {
         schema_version: SCHEMA_VERSION,
-        title: `${keyword} — Hướng Dẫn Chi Tiết`,
-        content_markdown: `# ${keyword}\n\nNội dung bài viết về ${keyword}.\n\n## FAQ\n\n### ${keyword} là gì?\n\nĐây là khái niệm quan trọng trong golf.`,
-        excerpt: `Tìm hiểu về ${keyword} trong golf.`,
+        title: `${keyword} — Comprehensive Guide`,
+        content_markdown: `# ${keyword}\n\nArticle content about ${keyword}.\n\n## FAQ\n\n### What is ${keyword}?\n\nThis is an important concept in this field.`,
+        excerpt: `Learn about ${keyword}.`,
         suggested_slug: keyword.toLowerCase().replace(/\s+/g, '-'),
-        category: 'hoc-golf',
-        tags: ['golf', keyword.toLowerCase()],
+        category: loadTaxonomyConfig().defaultFallbackCategory,
+        tags: [keyword.toLowerCase()],
         focus_keyword: keyword,
         additional_keywords: [],
         meta_title: `${keyword}`,
-        meta_description: `Tìm hiểu về ${keyword} - hướng dẫn chi tiết cho golfer Việt Nam.`,
+        meta_description: `Learn about ${keyword} — a comprehensive guide.`,
         faq: [
-          { question: `${keyword} là gì?`, answer: 'Đây là khái niệm quan trọng trong golf.' },
-          { question: `Tại sao ${keyword} quan trọng?`, answer: 'Giúp cải thiện kỹ năng golf.' },
-          { question: `Làm thế nào để áp dụng ${keyword}?`, answer: 'Thực hành thường xuyên.' },
+          { question: `What is ${keyword}?`, answer: 'This is an important concept.' },
+          { question: `Why is ${keyword} important?`, answer: 'It helps improve knowledge and skills.' },
+          { question: `How to apply ${keyword}?`, answer: 'Practice regularly.' },
         ],
-        featured_image: { prompt: `Golf ${keyword} illustration`, alt_text: keyword },
+        featured_image: { prompt: `${keyword} illustration`, alt_text: keyword },
         citations: researchPack.facts,
         publish_recommendation: 'DRAFT',
         reasons: ['mock_mode'],
@@ -466,16 +467,16 @@ export class WriterService {
 
     let userPrompt = `Write a ${contentType} article about "${keyword}".\n\nContext: ${JSON.stringify(contextPayload)}`;
 
-    // News articles: force Vietnamese title, slug, and meta — do NOT copy the English source title
+    // News articles: force unique title and localized content
     if (newsSourceUrl) {
       userPrompt += `\n\n--- NEWS ARTICLE RULES ---
 This article is based on an international news source. You MUST:
-1. Write a UNIQUE title in Vietnamese — DO NOT translate or copy the English source title "${keyword}"
-2. The title must be SEO-optimized for Vietnamese golfers searching in Vietnamese
-3. suggested_slug must be Vietnamese (ASCII, no diacritics), NOT a translation of the English title
-4. meta_title and meta_description must be in Vietnamese
-5. focus_keyword must be a Vietnamese keyword that Vietnamese users would search for
-6. Rewrite and localize the content for Vietnamese golf audience — add Vietnamese context where relevant
+1. Write a UNIQUE title — DO NOT translate or copy the English source title "${keyword}"
+2. The title must be SEO-optimized for your target audience
+3. suggested_slug must be in the target language (ASCII, no diacritics), NOT a translation of the English title
+4. meta_title and meta_description must be in the target language
+5. focus_keyword must be a keyword that your target users would search for
+6. Rewrite and localize the content for your target audience — add relevant local context
 --- END NEWS RULES ---`;
     }
 

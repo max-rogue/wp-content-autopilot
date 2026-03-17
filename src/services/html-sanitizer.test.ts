@@ -131,7 +131,7 @@ describe('HTML Sanitizer — T-04', () => {
     // ── Happy path ────────────────────────────────────────────────
 
     it('passes valid HTML unchanged', () => {
-        const html = '<h1 id="heading-1">Golf Swing Basics</h1><p>Learn proper form.</p><h2 id="heading-2">Grip</h2><p>Hold the club firmly.</p>';
+        const html = '<h1 id="heading-1">Product Review Basics</h1><p>Learn proper form.</p><h2 id="heading-2">Grip</h2><p>Hold the club firmly.</p>';
         const result = sanitizeHtml(html, { headingIdsInjected: true });
         expect(result.ok).toBe(true);
         expect(result.sanitized).toBe(html);
@@ -143,7 +143,7 @@ describe('HTML Sanitizer — T-04', () => {
             '<h1 id="main">Main Title</h1>',
             '<p>Introduction paragraph with <strong>bold</strong> text.</p>',
             '<h2 id="section-1">Section 1</h2>',
-            '<p>Content with <a href="/hoc-golf/">internal link</a>.</p>',
+            '<p>Content with <a href="/guides/">internal link</a>.</p>',
             '<h3 id="sub-1-1">Sub Section</h3>',
             '<ul><li>Item 1</li><li>Item 2</li></ul>',
             '<h2 id="faq">FAQ</h2>',

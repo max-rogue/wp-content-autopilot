@@ -236,7 +236,7 @@ describe('POST /run — optional body support', () => {
         const db2 = getDb(TEST_DB_PATH);
         const queueRepo = new PublishQueueRepo(db2);
 
-        const keyword = 'Cách chơi golf chuẩn';
+        const keyword = 'Cách chọn sản phẩm chuẩn';
         const normalized = normalizeKeyword(keyword);
         const idempotencyKey = 'test-key-001';
 
@@ -394,10 +394,10 @@ describe('POST /run — optional body support', () => {
 
     it('normalize keyword handles Vietnamese patterns correctly', () => {
         // Double spaces
-        expect(normalizeKeyword('  cách  chơi  golf  ')).toBe('cách chơi golf');
+        expect(normalizeKeyword('  cách  chọn  sản phẩm  ')).toBe('cách chọn sản phẩm');
 
         // Vietnamese pattern normalization
-        expect(normalizeKeyword('Cách chơi golf chuẩn')).toBe('cách chơi golf đúng');
-        expect(normalizeKeyword('Sân golf tại Hà Nội')).toBe('sân golf ở hà nội');
+        expect(normalizeKeyword('Cách chọn sản phẩm chuẩn')).toBe('cách chọn sản phẩm đúng');
+        expect(normalizeKeyword('Dịch vụ tại Hà Nội')).toBe('dịch vụ ở hà nội');
     });
 });

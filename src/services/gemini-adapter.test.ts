@@ -112,7 +112,7 @@ describe('callGeminiSdk — tool shape verification', () => {
             apiKey: 'AIzaSyTestKey1234567890abc',
             model: 'gemini-2.0-flash',
             systemPrompt: 'You are a researcher',
-            userPrompt: 'Research golf',
+            userPrompt: 'Research topic',
             enableGoogleSearch: true,
         });
 
@@ -139,7 +139,7 @@ describe('callGeminiSdk — tool shape verification', () => {
             apiKey: 'AIzaSyTestKey1234567890abc',
             model: 'gemini-2.0-flash',
             systemPrompt: 'You are a writer',
-            userPrompt: 'Write about golf',
+            userPrompt: 'Write about topic',
             enableGoogleSearch: false,
         });
 
@@ -223,18 +223,18 @@ describe('callGeminiSdk — tool shape verification', () => {
         await callGeminiSdk({
             apiKey: 'AIzaSyTestKey1234567890abc',
             model: 'gemini-2.0-flash',
-            systemPrompt: 'You are a golf researcher',
-            userPrompt: 'Research "golf swing" for a BlogPost article',
+            systemPrompt: 'You are a topic researcher',
+            userPrompt: 'Research "product review" for a BlogPost article',
             maxOutputTokens: 8192,
             temperature: 0.5,
         });
 
         const args = _getLastCallArgs();
-        expect(args!.contents).toBe('Research "golf swing" for a BlogPost article');
+        expect(args!.contents).toBe('Research "product review" for a BlogPost article');
         expect(args!.model).toBe('gemini-2.0-flash');
 
         const config = args!.config as Record<string, unknown>;
-        expect(config.systemInstruction).toBe('You are a golf researcher');
+        expect(config.systemInstruction).toBe('You are a topic researcher');
         expect(config.maxOutputTokens).toBe(8192);
         expect(config.temperature).toBe(0.5);
     });

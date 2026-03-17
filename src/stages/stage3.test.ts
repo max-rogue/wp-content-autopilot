@@ -35,7 +35,7 @@ function makeStage2(): Stage2Output {
         schema_version: SCHEMA_VERSION,
         queue_id: 'q-test',
         outline_points: ['Introduction', 'Main concept', 'FAQ', 'Conclusion'],
-        facts: [{ claim: 'Golf is fun', source_url: 'https://example.com' }],
+        facts: [{ claim: 'This is useful', source_url: 'https://example.com' }],
         definitions: ['Handicap: A measure of ability'],
         unknowns: [],
         citations_required: true,
@@ -50,19 +50,19 @@ function makeStage3Output(overrides?: Partial<Stage3Output>): Stage3Output {
         content_markdown: '# Test\n\nContent here.',
         excerpt: 'Test excerpt',
         suggested_slug: 'test-slug',
-        category: 'hoc-golf',
-        tags: ['golf'],
+        category: 'guides',
+        tags: ['guides'],
         focus_keyword: 'test keyword',
         additional_keywords: [],
         meta_title: 'Test | MySite',
-        meta_description: 'A test description for the golf article.',
+        meta_description: 'A test description for the test article.',
         faq: [
             { question: 'Q1?', answer: 'A1' },
             { question: 'Q2?', answer: 'A2' },
             { question: 'Q3?', answer: 'A3' },
         ],
-        featured_image: { prompt: 'Golf illustration', alt_text: 'golf' },
-        citations: [{ claim: 'Golf is fun', source_url: 'https://example.com' }],
+        featured_image: { prompt: 'Product illustration', alt_text: 'product' },
+        citations: [{ claim: 'This is useful', source_url: 'https://example.com' }],
         publish_recommendation: 'DRAFT',
         reasons: [],
         missing_data_fields: [],
@@ -85,8 +85,8 @@ function seedPlannedRow(db: Database.Database, queueId: string) {
     const queueRepo = new PublishQueueRepo(db);
     queueRepo.insert({
         id: queueId,
-        picked_keyword: 'golf swing',
-        normalized_keyword: 'golf_swing',
+        picked_keyword: 'product review',
+        normalized_keyword: 'product_review',
         language: 'vi',
         idempotency_key: `idem-${queueId}`,
         cluster: 'technique',
@@ -138,7 +138,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -154,7 +154,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
     });
 
     it('persists raw_excerpt into fail_reasons when fields missing', async () => {
-        const rawText = '{"title":"Valid Title","suggested_slug":"ok","focus_keyword":"golf"}';
+        const rawText = '{"title":"Valid Title","suggested_slug":"ok","focus_keyword":"topic"}';
         const draftResult = makeDraftResult(
             { content_markdown: undefined as unknown as string },
             rawText
@@ -167,7 +167,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -205,7 +205,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
 
         await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -236,7 +236,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
 
         await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -269,7 +269,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -305,7 +305,7 @@ describe('Stage 3 — missing required fields (robustness + raw excerpt)', () =>
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -334,7 +334,7 @@ describe('Stage 3 — AI safety check', () => {
 
     it('detects "as an ai language model" in content', async () => {
         const draftResult = makeDraftResult({
-            content_markdown: '# Golf Swing\n\nAs an AI language model, I can help you understand golf.',
+            content_markdown: '# Product Review\n\nAs an AI language model, I can help you understand products.',
         });
 
         const mockWriter = {
@@ -344,7 +344,7 @@ describe('Stage 3 — AI safety check', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -363,7 +363,7 @@ describe('Stage 3 — AI safety check', () => {
 
     it('detects prohibited topic "gambling" in content', async () => {
         const draftResult = makeDraftResult({
-            content_markdown: '# Golf\n\nCombine golf with gambling for better experience.',
+            content_markdown: '# Product\n\nCombine product with gambling for better experience.',
         });
 
         const mockWriter = {
@@ -373,7 +373,7 @@ describe('Stage 3 — AI safety check', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf',
+            keyword: 'product',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -410,7 +410,7 @@ describe('Stage 3 — valid draft flow', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -438,7 +438,7 @@ describe('Stage 3 — valid draft flow', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -469,14 +469,14 @@ describe('Stage 3 — schema_parse_failed with excerpt', () => {
     it('captures excerpt from schema_parse_failed error', async () => {
         const mockWriter = {
             draft: vi.fn().mockRejectedValue(
-                new Error('schema_parse_failed: Here is the research data for golf...')
+                new Error('schema_parse_failed: Here is the research data for topic...')
             ),
             finalEdit: vi.fn(),
         } as unknown as WriterService;
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -506,7 +506,7 @@ describe('Stage 3 — schema_parse_failed with excerpt', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -548,7 +548,7 @@ describe('Stage 3 — contract validation', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,
@@ -578,7 +578,7 @@ describe('Stage 3 — contract validation', () => {
 
         const result = await runStage3({
             queueId,
-            keyword: 'golf swing',
+            keyword: 'product review',
             contentType: 'BlogPost',
             classHint: 'B',
             blogpostSubtype: null,

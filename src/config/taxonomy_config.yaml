@@ -1,13 +1,32 @@
-# taxonomy_config.yaml — Tag whitelist and archive policy
-# Edit to match your site's taxonomy structure
+# taxonomy_config.yaml — Full taxonomy configuration
+# Edit to match your site's niche, categories, and taxonomy structure
 # Pipeline uses this to validate/sync WordPress categories and tags
 
-version: "2.1"
+version: "2.3"
 
+# ── Categories ──────────────────────────────────────────────────
+# Define your WordPress categories. At least one is required.
+# slug: URL-safe identifier (lowercase, hyphens)
+# name: Display name shown in WordPress
+categories:
+  - slug: general
+    name: General
+
+# ── Cluster → Category Mapping ──────────────────────────────────
+# Maps keyword.csv cluster values to one of your category slugs above.
+# If a cluster is not listed here, it falls back to default_fallback_category.
+cluster_to_category: {}
+
+# ── Default Fallback Category ───────────────────────────────────
+# Category slug used when a keyword's cluster doesn't match any mapping above.
+# Must be one of the slugs defined in categories.
+default_fallback_category: general
+
+# ── Tag Whitelist ───────────────────────────────────────────────
+# Tags organized by group. Only whitelisted tags are auto-created in WordPress.
+# Add groups and tags that match your niche.
 tag_whitelist:
-  brand:
-    - example-brand-1
-    - example-brand-2
+  brand: []
   category:
     - guides
     - reviews
@@ -18,10 +37,30 @@ tag_whitelist:
     - advanced
     - tips
 
+# ── Tag Archive Policy ──────────────────────────────────────────
 tag_archive_policy:
   default: noindex_follow
   graduated: []
 
+# ── Approved Additions ──────────────────────────────────────────
+# Tags explicitly approved for creation even if not in the whitelist.
 approved_additions: []
 
+# ── Tag Limits ──────────────────────────────────────────────────
 max_tags_per_post: 8
+
+# ── News Default Cluster ──────────────────────────────────────────
+# Cluster name assigned to news articles when inserted into the publish queue.
+# Should match a key in cluster_to_category above, or falls back to default category.
+news_default_cluster: news
+
+# ── Image Style Hint ──────────────────────────────────────────────
+# Style descriptor used in hero image prompts. Customize per niche.
+# Example: "vibrant food photography", "modern tech illustration"
+image_style_hint: vibrant professional photography
+
+# ── News Relevance Keywords ─────────────────────────────────────
+# Keywords used to filter RSS news articles for your niche.
+# If empty, all articles from configured feeds are accepted (no filter).
+# Example for a golf site: [golf, golfer, pga, lpga, masters]
+news_relevance_keywords: []

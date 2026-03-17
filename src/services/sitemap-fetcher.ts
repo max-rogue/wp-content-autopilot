@@ -21,7 +21,7 @@ const MAX_SITEMAP_PAIRS = 20;
 
 /**
  * Humanize a URL slug segment into a readable title.
- * e.g. "/best-golf-clubs/" → "Best Golf Clubs"
+ * e.g. "/best-power-tools/" → "Best Power Tools"
  */
 export function humanizeSlug(slug: string): string {
     const cleaned = slug.replace(/^\/|\/$/g, '');
@@ -59,7 +59,7 @@ export function isSitemapIndex(xml: string): boolean {
 
 /**
  * Convert a full URL into a relative slug path.
- * e.g. "https://example.com/hoc-golf/best-clubs/" → "/hoc-golf/best-clubs/"
+ * e.g. "https://example.com/guides/best-tools/" → "/guides/best-tools/"
  */
 export function urlToSlug(url: string): string {
     try {
