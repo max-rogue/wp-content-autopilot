@@ -91,12 +91,28 @@ See [prompts/template_prompts.md](prompts/template_prompts.md) for the full temp
 
 ### `data/keyword.csv` — Your Keywords
 
+The CSV ships with **headers only** — you add the rows. It supports 19 columns split into two groups:
+
+**Pipeline columns** (used at runtime): `keyword` *(required)*, `content_type`, `blogpost_subtype`, `review_subtype`, `cluster`, `class_hint`, `local_modifier`, `canonical_category`, `row_order`
+
+**Planning columns** (editorial calendar): `funnel_stage`, `priority`, `notes`, `phase`, `planned_month`, `planned_week`, `suggested_tags`, `cannibalization_group`, `local_data_required`, `pass_risk`
+
+The `class_hint` controls AI research depth:
+
+| Class | When to Use | Example |
+|-------|------------|---------|
+| **A** | Definitions, evergreen facts | "what is VO2 max" |
+| **B** | Reviews, comparisons (default) | "best running shoes 2025" |
+| **C** | Prices, addresses, local data | "gyms near me" |
+
 ```csv
-keyword,cluster,content_type,class_hint,blogpost_subtype
-best running shoes 2025,fitness,BlogPost,B,BuyingGuide
-how to start running,fitness,BlogPost,A,HowTo
-what is VO2 max,fitness,Glossary,A,
+row_order,keyword,content_type,blogpost_subtype,cluster,class_hint,funnel_stage
+1,what is VO2 max,Glossary,,fitness,A,TOFU
+2,best running shoes 2025,BlogPost,BuyingGuide,fitness,B,MOFU
+3,gyms near me,BlogPost,Guide,fitness,C,BOFU
 ```
+
+📖 **Full guide**: [docs/KEYWORD_SETUP_GUIDE.md](docs/KEYWORD_SETUP_GUIDE.md) — covers SEO research workflow, column reference, and validation checklist.
 
 ## Pipeline Stages
 
