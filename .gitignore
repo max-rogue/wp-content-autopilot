@@ -15,3 +15,8 @@ data/*.db-journal
 *-shm
 coverage/
 .vscode/
+
+# Test output artifacts (may contain env diagnostics / local paths)
+test_output.txt
+utf8_test_output.txt
+test_results.json
