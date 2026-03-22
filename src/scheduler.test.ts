@@ -128,14 +128,14 @@ describe('Scheduler — timezone alias normalization', () => {
 
     it('resolveCronTimezone falls back for missing timezone', () => {
         const r = resolveCronTimezone('');
-        expect(r.timezone).toBe('Asia/Ho_Chi_Minh');
+        expect(r.timezone).toBe('UTC');
         expect(r.usedFallback).toBe(true);
         expect(r.reason).toBe('missing');
     });
 
     it('resolveCronTimezone falls back for invalid timezone', () => {
         const r = resolveCronTimezone('Invalid/Not_A_Zone');
-        expect(r.timezone).toBe('Asia/Ho_Chi_Minh');
+        expect(r.timezone).toBe('UTC');
         expect(r.usedFallback).toBe(true);
         expect(r.reason).toBe('invalid');
     });
@@ -261,7 +261,7 @@ describe('Scheduler — computeNextRun timezone correctness', () => {
 
     it('falls back safely when timezone is invalid', () => {
         const now = new Date('2026-02-26T17:10:00.000Z');
-        const fallback = computeNextRun('58 0 * * *', 'Asia/Ho_Chi_Minh', now);
+        const fallback = computeNextRun('58 0 * * *', 'UTC', now);
         const invalid = computeNextRun('58 0 * * *', 'Invalid/Not_A_Zone', now);
 
         expect(invalid.nextDate.getTime()).toBe(fallback.nextDate.getTime());

@@ -37,7 +37,7 @@ const TZ_ALIASES: Record<string, string> = {
     'Asia/Saigon': 'Asia/Ho_Chi_Minh',
 };
 
-const DEFAULT_CRON_TIMEZONE = 'Asia/Ho_Chi_Minh';
+const DEFAULT_CRON_TIMEZONE = 'UTC';
 
 /**
  * Normalize a timezone identifier by collapsing known aliases to their
@@ -260,6 +260,15 @@ async function cronTick(config: PipelineConfig): Promise<void> {
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         logger.error('Scheduler: pipeline run failed', { error: msg });
+        // O3 FIX: Release lock on failure so the daily window can be retried.
+        try {
+            lockRepo.release(lockKey);
+            logger.info('Scheduler: lock released after failure — window can be retried', {
+                lock_key: lockKey,
+            });
+        } catch {
+            // ignore release errors — cleanup will catch it later
+        }
     } finally {
         isRunning = false;
         try {
