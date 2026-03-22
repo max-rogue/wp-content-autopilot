@@ -20,8 +20,8 @@ import type { QueueStatus } from './types';
 import { logger } from './logger';
 
 /** Statuses that indicate an interrupted (non-terminal) run. */
+// G9 FIX: 'planned' removed — items that haven't started aren't interrupted.
 const INTERRUPTED_STATUSES: QueueStatus[] = [
-    'planned',
     'researching',
     'drafting',
     'qa',

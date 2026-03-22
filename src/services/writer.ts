@@ -260,7 +260,8 @@ export class WriterService {
    */
   private async callGeminiViaRawHttp(options: LlmCallOptions): Promise<string> {
     const apiKey = this.config.geminiApiKey;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${options.model}:generateContent?key=${apiKey}`;
+    // G3 FIX: API key moved from URL query to header to prevent exposure in logs.
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${options.model}:generateContent`;
 
     const requestBody: Record<string, unknown> = {
       contents: [
@@ -284,7 +285,10 @@ export class WriterService {
 
     const resp = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
       body: JSON.stringify(requestBody),
     });
 

@@ -162,6 +162,12 @@ async function fetchFeed(
     timeoutMs: number,
 ): Promise<{ candidates: NewsCandidate[]; error?: string }> {
     try {
+        // G5 FIX: Validate URL scheme to prevent SSRF (file://, ftp://, etc.)
+        const parsedUrl = new URL(feedUrl);
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            return { candidates: [], error: `blocked_scheme: ${parsedUrl.protocol}` };
+        }
+
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -179,7 +185,18 @@ async function fetchFeed(
             return { candidates: [], error: `HTTP ${response.status}` };
         }
 
+        // G4 FIX: Reject feeds larger than 5 MB to prevent OOM.
+        const MAX_BODY_BYTES = 5 * 1024 * 1024;
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
+            return { candidates: [], error: `body_too_large: ${contentLength} bytes` };
+        }
+
         const xml = await response.text();
+        if (xml.length > MAX_BODY_BYTES) {
+            return { candidates: [], error: `body_too_large: ${xml.length} chars (post-read)` };
+        }
+
         const feedTitle = extractFeedTitle(xml);
         const items = xmlItems(xml);
 

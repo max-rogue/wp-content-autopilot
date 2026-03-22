@@ -209,7 +209,7 @@ async function cronTick(config: PipelineConfig): Promise<void> {
         // Run recovery pass first: reset interrupted items within lookback window
         try {
             const recoveryDb = getDb(config.dbPath);
-            runMigrations(recoveryDb);
+            // G10 FIX: Removed redundant runMigrations (parent cronTick L185 already ran it).
             const recoveryQueueRepo = new PublishQueueRepo(recoveryDb);
             const recoveryResult = runRecovery(recoveryQueueRepo, config);
             recoveryDb.close();
@@ -228,7 +228,7 @@ async function cronTick(config: PipelineConfig): Promise<void> {
             if (newsConfig.newsEnabled && newsConfig.newsFeeds.length > 0) {
                 const { ingestNews } = await import('./services/news-ingest');
                 const newsDb = getDb(config.dbPath);
-                runMigrations(newsDb);
+                // G10 FIX: Removed redundant runMigrations.
                 const newsResult = await ingestNews(newsDb, {
                     feedUrls: newsConfig.newsFeeds,
                     lookbackHours: newsConfig.newsLookbackHours,
@@ -403,23 +403,33 @@ export function startScheduler(config: PipelineConfig): void {
         });
     }
 
+    // G6 FIX: Recursive setTimeout — re-anchors to cron-parser each tick (no 24h drift).
+    function scheduleNextTick() {
+        const { nextDate: nd, delayMs: delay } = computeNextRun(
+            config.cronSchedule,
+            canonicalTz,
+        );
+        const nextLocal = formatLocalWallClock(nd, canonicalTz);
+        logger.info('Scheduler: next tick scheduled', {
+            next_run_utc: nd.toISOString(),
+            next_run_local: nextLocal,
+            delay_ms: delay,
+        });
+        schedulerInterval = setTimeout(async () => {
+            await reportTick(config);
+            await cronTick(config);
+            scheduleNextTick(); // re-anchor for next day
+        }, delay) as unknown as ReturnType<typeof setInterval>;
+    }
+
     // Schedule first run
     const firstTimeout = setTimeout(async () => {
         // Run weekly report first (non-blocking)
         await reportTick(config);
         // Then run pipeline
         await cronTick(config);
-
-        // Then schedule recurring runs every 24 hours
-        schedulerInterval = setInterval(
-            async () => {
-                // Report tick runs daily but only emits weekly window
-                // (lock ensures idempotency — only first run of the week generates)
-                await reportTick(config);
-                await cronTick(config);
-            },
-            24 * 60 * 60 * 1000
-        );
+        // Then schedule recurring runs via re-anchored setTimeout
+        scheduleNextTick();
     }, delayMs);
 
     // Store the timeout so we can clear it on stop

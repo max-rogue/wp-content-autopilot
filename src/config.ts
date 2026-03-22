@@ -138,6 +138,10 @@ export interface PipelineConfig {
   // ── Content Defaults ──────────────────────────────────────────────
   /** DEFAULT_LANGUAGE — ISO code for content language. Default: 'en' */
   defaultLanguage: string;
+
+  // ── Security ──────────────────────────────────────────────────────
+  /** PIPELINE_API_KEY — Bearer token for authenticating API requests. */
+  pipelineApiKey: string;
 }
 
 function env(key: string, fallback?: string): string {
@@ -157,7 +161,8 @@ function envNum(key: string, fallback: number): number {
   const v = process.env[key];
   if (v === undefined || v === '') return fallback;
   const n = Number(v);
-  return isNaN(n) ? fallback : n;
+  // G8 FIX: Clamp to non-negative to prevent disabling guardrails.
+  return isNaN(n) ? fallback : Math.max(0, n);
 }
 
 /**
@@ -306,6 +311,9 @@ export function loadConfig(): PipelineConfig {
 
     // Content Defaults
     defaultLanguage: env('DEFAULT_LANGUAGE', 'en'),
+
+    // Security
+    pipelineApiKey: env('PIPELINE_API_KEY', ''),
   };
 }
 

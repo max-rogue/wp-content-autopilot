@@ -518,6 +518,30 @@ async function _runPipelineInner(config: PipelineConfig): Promise<RunResult> {
             const msg = err instanceof Error ? err.message : String(err);
             logger.error('Runner: unhandled error for queue item', { queue_id: queueId, error: msg });
             failed++;
+
+            // G7 FIX: Persist failure to queue + audit log so recovery doesn't retry endlessly.
+            try {
+                queueRepo.updateStatus(queueId, 'failed', {
+                    fail_reasons: JSON.stringify([`unhandled_error: ${msg}`]),
+                });
+                auditRepo.insert({
+                    id: uuid(),
+                    queue_id: queueId,
+                    run_id: stage0.run_id,
+                    stage_name: 'unhandled_error',
+                    input_snapshot_hash: '',
+                    output_snapshot_hash: '',
+                    gate_decisions: null,
+                    reasons: JSON.stringify([`unhandled_error: ${msg}`]),
+                    created_at: new Date().toISOString(),
+                });
+            } catch (persistErr) {
+                logger.error('Runner: failed to persist unhandled error', {
+                    queue_id: queueId,
+                    persist_error: persistErr instanceof Error ? persistErr.message : String(persistErr),
+                });
+            }
+
             results.push({
                 queue_id: queueId,
                 final_status: 'failed',

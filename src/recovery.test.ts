@@ -52,7 +52,8 @@ describe('Recovery Module', () => {
 
             scanRecoveryCandidates(repo, config);
             expect(repo.findInterrupted).toHaveBeenCalledWith(
-                expect.arrayContaining(['planned', 'researching', 'drafting', 'qa']),
+                // G9 FIX: 'planned' removed from INTERRUPTED_STATUSES
+                expect.arrayContaining(['researching', 'drafting', 'qa']),
                 expect.any(String),
                 5
             );

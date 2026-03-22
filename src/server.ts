@@ -49,6 +49,47 @@ export function createApp() {
     const startupAt = new Date().toISOString();
     const startupMs = Date.now();
 
+    // ── G1 FIX: Bearer token auth middleware ──────────────────────────
+    // Protects all endpoints except GET /health.
+    // Requires PIPELINE_API_KEY env var to be set.
+    if (config.pipelineApiKey) {
+        app.use((req, res, next) => {
+            if (req.path === '/health' && req.method === 'GET') return next();
+            const token = req.headers.authorization?.replace('Bearer ', '');
+            if (!token || token !== config.pipelineApiKey) {
+                res.status(401).json({ error: 'unauthorized' });
+                return;
+            }
+            next();
+        });
+    } else if (config.appEnv !== 'local') {
+        logger.warn('SECURITY: PIPELINE_API_KEY is empty — all endpoints are unauthenticated. Set PIPELINE_API_KEY in production.', {
+            app_env: config.appEnv,
+        });
+    }
+
+    // ── G2 FIX: In-memory rate limiter for POST endpoints ─────────────
+    // 10 requests per minute per IP.
+    const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+    const RATE_LIMIT_WINDOW_MS = 60_000;
+    const RATE_LIMIT_MAX = 10;
+    app.use((req, res, next) => {
+        if (req.method !== 'POST') return next();
+        const ip = req.ip || req.socket.remoteAddress || 'unknown';
+        const now = Date.now();
+        const entry = rateLimitMap.get(ip);
+        if (!entry || now > entry.resetAt) {
+            rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+            return next();
+        }
+        entry.count++;
+        if (entry.count > RATE_LIMIT_MAX) {
+            res.status(429).json({ error: 'rate_limit_exceeded' });
+            return;
+        }
+        next();
+    });
+
     /**
      * GET /health
      * Service health check.
